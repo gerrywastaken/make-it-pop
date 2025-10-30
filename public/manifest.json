@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Make It Pop",
+  "version": "1.0.0",
+  "description": "Highlight phrases on web pages",
+  "permissions": ["storage"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Make It Pop"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "settings.html",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "makeitpop@example.com"
+    }
+  }
+}

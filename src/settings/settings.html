@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Make It Pop - Settings</title>
+</head>
+<body>
+  <h1>Make It Pop Settings</h1>
+
+  <h2>Groups</h2>
+  <div>
+    <input type="text" id="groupName" placeholder="Group name">
+    <input type="color" id="groupColor" value="#ffff00">
+    <textarea id="groupPhrases" placeholder="Phrases (one per line)"></textarea>
+    <button id="addGroup">Add Group</button>
+    <button id="cancelGroup" style="display: none;">Cancel</button>
+  </div>
+  <div id="groupsList"></div>
+
+  <hr>
+
+  <h2>Domains</h2>
+  <div>
+    <input type="text" id="domainPattern" placeholder="Domain pattern (e.g., *.linkedin.com)">
+    <div id="domainGroupsSelection"></div>
+    <button id="addDomain">Add Domain</button>
+    <button id="cancelDomain" style="display: none;">Cancel</button>
+  </div>
+  <div id="domainsList"></div>
+
+  <script type="module" src="settings.js"></script>
+</body>
+</html>
