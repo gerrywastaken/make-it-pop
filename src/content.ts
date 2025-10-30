@@ -119,19 +119,52 @@ function highlightTextNode(node: Text, phraseMap: Map<string, string>) {
   parent.replaceChild(fragment, node);
 }
 
+// Elements we should never highlight inside
+const SKIP_TAGS = new Set([
+  'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT',
+  'SELECT', 'OPTION', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED'
+]);
+
+function shouldSkipElement(element: Element): boolean {
+  // Skip if it's one of the forbidden tags
+  if (SKIP_TAGS.has(element.tagName)) {
+    return true;
+  }
+  // Skip contenteditable elements (rich text editors)
+  if (element.isContentEditable) {
+    return true;
+  }
+  return false;
+}
+
 function walkTextNodes(node: Node, phraseMap: Map<string, string>) {
   // Skip if this node or its parent is already a highlight span
   if (node.nodeType === Node.TEXT_NODE) {
     const parent = node.parentNode;
-    if (parent && (parent as Element).hasAttribute?.('data-makeitpop-highlight')) {
+    if (!parent) return;
+
+    // Skip if parent is a forbidden element
+    if (parent.nodeType === Node.ELEMENT_NODE && shouldSkipElement(parent as Element)) {
+      return;
+    }
+
+    if ((parent as Element).hasAttribute?.('data-makeitpop-highlight')) {
       return; // Already highlighted
     }
     highlightTextNode(node as Text, phraseMap);
-  } else {
+  } else if (node.nodeType === Node.ELEMENT_NODE) {
+    const element = node as Element;
+
     // Skip our own highlight spans
-    if ((node as Element).hasAttribute?.('data-makeitpop-highlight')) {
+    if (element.hasAttribute('data-makeitpop-highlight')) {
       return;
     }
+
+    // Skip forbidden elements entirely
+    if (shouldSkipElement(element)) {
+      return;
+    }
+
     const children = Array.from(node.childNodes);
     for (const child of children) {
       walkTextNodes(child, phraseMap);
