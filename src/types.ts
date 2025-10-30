@@ -1,13 +1,17 @@
 export interface Group {
   id: string;
   name: string;
-  color: string;
+  lightBgColor: string;
+  lightTextColor: string;
+  darkBgColor: string;
+  darkTextColor: string;
   phrases: string[];
 }
 
 export interface Domain {
   id: string;
   pattern: string;
+  mode: 'light' | 'dark';
   groupIds: string[];
 }
 

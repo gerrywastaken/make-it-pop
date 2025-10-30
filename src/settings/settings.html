@@ -9,9 +9,14 @@
 
   <h2>Groups</h2>
   <div>
-    <input type="text" id="groupName" placeholder="Group name">
-    <input type="color" id="groupColor" value="#ffff00">
-    <textarea id="groupPhrases" placeholder="Phrases (one per line)"></textarea>
+    <input type="text" id="groupName" placeholder="Group name"><br>
+    <strong>Light Mode:</strong>
+    Background: <input type="color" id="groupLightBg" value="#ffff00">
+    Text: <input type="color" id="groupLightText" value="#000000"><br>
+    <strong>Dark Mode:</strong>
+    Background: <input type="color" id="groupDarkBg" value="#3a3a00">
+    Text: <input type="color" id="groupDarkText" value="#ffffff"><br>
+    <textarea id="groupPhrases" placeholder="Phrases (one per line)"></textarea><br>
     <button id="addGroup">Add Group</button>
     <button id="cancelGroup" style="display: none;">Cancel</button>
   </div>
@@ -21,7 +26,10 @@
 
   <h2>Domains</h2>
   <div>
-    <input type="text" id="domainPattern" placeholder="Domain pattern (e.g., *.linkedin.com)">
+    <input type="text" id="domainPattern" placeholder="Domain pattern (e.g., *.linkedin.com)"><br>
+    <strong>Mode:</strong>
+    <label><input type="radio" name="domainMode" value="light" checked> Light</label>
+    <label><input type="radio" name="domainMode" value="dark"> Dark</label><br>
     <div id="domainGroupsSelection"></div>
     <button id="addDomain">Add Domain</button>
     <button id="cancelDomain" style="display: none;">Cancel</button>

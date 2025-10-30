@@ -2,13 +2,17 @@
 interface Group {
   id: string;
   name: string;
-  color: string;
+  lightBgColor: string;
+  lightTextColor: string;
+  darkBgColor: string;
+  darkTextColor: string;
   phrases: string[];
 }
 
 interface Domain {
   id: string;
   pattern: string;
+  mode: 'light' | 'dark';
   groupIds: string[];
 }
 
@@ -36,7 +40,8 @@ function matchesDomain(pattern: string, hostname: string): boolean {
 interface Match {
   start: number;
   end: number;
-  color: string;
+  bgColor: string;
+  textColor: string;
 }
 
 // Check if a character is a word character (alphanumeric or underscore)
@@ -55,7 +60,7 @@ function isWordBoundary(text: string, start: number, end: number): boolean {
   return beforeOk && afterOk;
 }
 
-function findMatches(text: string, phraseMap: Map<string, string>): Match[] {
+function findMatches(text: string, phraseMap: Map<string, {bgColor: string, textColor: string}>): Match[] {
   const phrases = Array.from(phraseMap.keys()).sort((a, b) => b.length - a.length);
   const matches: Match[] = [];
   const lowerText = text.toLowerCase();
@@ -69,10 +74,12 @@ function findMatches(text: string, phraseMap: Map<string, string>): Match[] {
         const end = position + phrase.length;
         // Check word boundaries
         if (isWordBoundary(text, position, end)) {
+          const colors = phraseMap.get(phrase)!;
           matches.push({
             start: position,
             end: end,
-            color: phraseMap.get(phrase)!,
+            bgColor: colors.bgColor,
+            textColor: colors.textColor,
           });
           position += phrase.length;
           matched = true;
@@ -86,7 +93,7 @@ function findMatches(text: string, phraseMap: Map<string, string>): Match[] {
   return matches;
 }
 
-function highlightTextNode(node: Text, phraseMap: Map<string, string>) {
+function highlightTextNode(node: Text, phraseMap: Map<string, {bgColor: string, textColor: string}>) {
   const text = node.textContent || '';
   const matches = findMatches(text, phraseMap);
 
@@ -104,7 +111,8 @@ function highlightTextNode(node: Text, phraseMap: Map<string, string>) {
     }
 
     const span = document.createElement('span');
-    span.style.backgroundColor = match.color;
+    span.style.backgroundColor = match.bgColor;
+    span.style.color = match.textColor;
     span.setAttribute('data-makeitpop-highlight', 'true');
     span.textContent = text.slice(match.start, match.end);
     fragment.appendChild(span);
@@ -137,7 +145,7 @@ function shouldSkipElement(element: Element): boolean {
   return false;
 }
 
-function walkTextNodes(node: Node, phraseMap: Map<string, string>) {
+function walkTextNodes(node: Node, phraseMap: Map<string, {bgColor: string, textColor: string}>) {
   // Skip if this node or its parent is already a highlight span
   if (node.nodeType === Node.TEXT_NODE) {
     const parent = node.parentNode;
@@ -181,7 +189,7 @@ function debounce(func: Function, wait: number): Function {
   };
 }
 
-let globalPhraseMap: Map<string, string> | null = null;
+let globalPhraseMap: Map<string, {bgColor: string, textColor: string}> | null = null;
 
 function highlightNewContent() {
   if (!globalPhraseMap) return;
@@ -200,10 +208,15 @@ async function highlightPage() {
   const groups = await getGroups();
   const activeGroups = groups.filter(g => matchedDomain.groupIds.includes(g.id));
 
-  const phraseMap = new Map<string, string>();
+  const mode = matchedDomain.mode;
+  const phraseMap = new Map<string, {bgColor: string, textColor: string}>();
+
   for (const group of activeGroups) {
+    const bgColor = mode === 'dark' ? group.darkBgColor : group.lightBgColor;
+    const textColor = mode === 'dark' ? group.darkTextColor : group.lightTextColor;
+
     for (const phrase of group.phrases) {
-      phraseMap.set(phrase, group.color);
+      phraseMap.set(phrase, { bgColor, textColor });
     }
   }
 

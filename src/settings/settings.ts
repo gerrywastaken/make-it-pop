@@ -2,13 +2,17 @@
 interface Group {
   id: string;
   name: string;
-  color: string;
+  lightBgColor: string;
+  lightTextColor: string;
+  darkBgColor: string;
+  darkTextColor: string;
   phrases: string[];
 }
 
 interface Domain {
   id: string;
   pattern: string;
+  mode: 'light' | 'dark';
   groupIds: string[];
 }
 
@@ -38,7 +42,60 @@ let domains: Domain[] = [];
 let editingGroupId: string | null = null;
 let editingDomainId: string | null = null;
 
+// Migrate old data format to new format
+async function migrateData() {
+  const rawData = await browserAPI.storage.local.get(['groups', 'domains']);
+  let needsSave = false;
+
+  // Migrate groups from old format (single 'color' field) to new format
+  if (rawData.groups && rawData.groups.length > 0) {
+    const migratedGroups = rawData.groups.map((g: any) => {
+      // Check if this is old format (has 'color' but not 'lightBgColor')
+      if (g.color && !g.lightBgColor) {
+        needsSave = true;
+        return {
+          id: g.id,
+          name: g.name,
+          lightBgColor: g.color,
+          lightTextColor: '#000000',
+          darkBgColor: g.color,
+          darkTextColor: '#ffffff',
+          phrases: g.phrases,
+        };
+      }
+      return g; // Already new format
+    });
+
+    if (needsSave) {
+      await saveGroups(migratedGroups);
+    }
+  }
+
+  // Migrate domains from old format (no 'mode' field) to new format
+  if (rawData.domains && rawData.domains.length > 0) {
+    let domainNeedsSave = false;
+    const migratedDomains = rawData.domains.map((d: any) => {
+      // Check if this is old format (no 'mode' field)
+      if (!d.mode) {
+        domainNeedsSave = true;
+        return {
+          id: d.id,
+          pattern: d.pattern,
+          mode: 'light' as const,
+          groupIds: d.groupIds,
+        };
+      }
+      return d; // Already new format
+    });
+
+    if (domainNeedsSave) {
+      await saveDomains(migratedDomains);
+    }
+  }
+}
+
 async function init() {
+  await migrateData(); // Run migration first
   groups = await getGroups();
   domains = await getDomains();
   render();
@@ -54,8 +111,9 @@ function renderGroups() {
   const list = document.getElementById('groupsList')!;
   list.innerHTML = groups.map(g => `
     <div>
-      <strong>${g.name}</strong>
-      <span style="background: ${g.color}; padding: 2px 8px;">${g.color}</span>
+      <strong>${g.name}</strong><br>
+      Light: <span style="background: ${g.lightBgColor}; color: ${g.lightTextColor}; padding: 2px 8px;">Sample</span>
+      Dark: <span style="background: ${g.darkBgColor}; color: ${g.darkTextColor}; padding: 2px 8px;">Sample</span>
       <button class="edit-group" data-id="${g.id}">Edit</button>
       <button class="delete-group" data-id="${g.id}">Delete</button>
       <div>Phrases: ${g.phrases.join(', ')}</div>
@@ -86,7 +144,7 @@ function renderDomains() {
 
     return `
       <div>
-        <strong>${d.pattern}</strong> - ${groupsDisplay}
+        <strong>${d.pattern}</strong> (${d.mode} mode) - ${groupsDisplay}
         <button class="edit-domain" data-id="${d.id}">Edit</button>
         <button class="delete-domain" data-id="${d.id}">Delete</button>
       </div>
@@ -119,11 +177,17 @@ function renderDomainGroupsSelection() {
 
 document.getElementById('addGroup')!.addEventListener('click', async () => {
   const nameInput = document.getElementById('groupName') as HTMLInputElement;
-  const colorInput = document.getElementById('groupColor') as HTMLInputElement;
+  const lightBgInput = document.getElementById('groupLightBg') as HTMLInputElement;
+  const lightTextInput = document.getElementById('groupLightText') as HTMLInputElement;
+  const darkBgInput = document.getElementById('groupDarkBg') as HTMLInputElement;
+  const darkTextInput = document.getElementById('groupDarkText') as HTMLInputElement;
   const phrasesInput = document.getElementById('groupPhrases') as HTMLTextAreaElement;
 
   const name = nameInput.value.trim();
-  const color = colorInput.value;
+  const lightBgColor = lightBgInput.value;
+  const lightTextColor = lightTextInput.value;
+  const darkBgColor = darkBgInput.value;
+  const darkTextColor = darkTextInput.value;
   const phrases = phrasesInput.value.split('\n').map(p => p.trim()).filter(Boolean);
 
   if (!name || phrases.length === 0) return;
@@ -135,7 +199,10 @@ document.getElementById('addGroup')!.addEventListener('click', async () => {
       groups[index] = {
         id: editingGroupId,
         name,
-        color,
+        lightBgColor,
+        lightTextColor,
+        darkBgColor,
+        darkTextColor,
         phrases,
       };
     }
@@ -145,7 +212,10 @@ document.getElementById('addGroup')!.addEventListener('click', async () => {
     const newGroup: Group = {
       id: crypto.randomUUID(),
       name,
-      color,
+      lightBgColor,
+      lightTextColor,
+      darkBgColor,
+      darkTextColor,
       phrases,
     };
     groups.push(newGroup);
@@ -154,6 +224,10 @@ document.getElementById('addGroup')!.addEventListener('click', async () => {
   await saveGroups(groups);
 
   nameInput.value = '';
+  lightBgInput.value = '#ffff00';
+  lightTextInput.value = '#000000';
+  darkBgInput.value = '#3a3a00';
+  darkTextInput.value = '#ffffff';
   phrasesInput.value = '';
   render();
 });
@@ -163,6 +237,9 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
   const pattern = patternInput.value.trim();
 
   if (!pattern) return;
+
+  const modeRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"]:checked');
+  const mode = (modeRadio?.value || 'light') as 'light' | 'dark';
 
   const checkboxes = document.querySelectorAll<HTMLInputElement>('.domain-group-checkbox:checked');
   const groupIds = Array.from(checkboxes).map(cb => cb.value);
@@ -174,6 +251,7 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
       domains[index] = {
         id: editingDomainId,
         pattern,
+        mode,
         groupIds,
       };
     }
@@ -183,6 +261,7 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
     const newDomain: Domain = {
       id: crypto.randomUUID(),
       pattern,
+      mode,
       groupIds,
     };
     domains.push(newDomain);
@@ -191,6 +270,9 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
   await saveDomains(domains);
 
   patternInput.value = '';
+  // Reset mode to light
+  const lightRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"][value="light"]');
+  if (lightRadio) lightRadio.checked = true;
   checkboxes.forEach(cb => cb.checked = false);
   render();
 });
@@ -209,11 +291,17 @@ document.getElementById('groupsList')!.addEventListener('click', async (e) => {
     editingGroupId = id;
 
     const nameInput = document.getElementById('groupName') as HTMLInputElement;
-    const colorInput = document.getElementById('groupColor') as HTMLInputElement;
+    const lightBgInput = document.getElementById('groupLightBg') as HTMLInputElement;
+    const lightTextInput = document.getElementById('groupLightText') as HTMLInputElement;
+    const darkBgInput = document.getElementById('groupDarkBg') as HTMLInputElement;
+    const darkTextInput = document.getElementById('groupDarkText') as HTMLInputElement;
     const phrasesInput = document.getElementById('groupPhrases') as HTMLTextAreaElement;
 
     nameInput.value = group.name;
-    colorInput.value = group.color;
+    lightBgInput.value = group.lightBgColor;
+    lightTextInput.value = group.lightTextColor;
+    darkBgInput.value = group.darkBgColor;
+    darkTextInput.value = group.darkTextColor;
     phrasesInput.value = group.phrases.join('\n');
 
     render();
@@ -243,6 +331,10 @@ document.getElementById('domainsList')!.addEventListener('click', async (e) => {
     const patternInput = document.getElementById('domainPattern') as HTMLInputElement;
     patternInput.value = domain.pattern;
 
+    // Set the mode radio button
+    const modeRadio = document.querySelector<HTMLInputElement>(`input[name="domainMode"][value="${domain.mode}"]`);
+    if (modeRadio) modeRadio.checked = true;
+
     render();
   } else if (target.classList.contains('delete-domain')) {
     const id = target.getAttribute('data-id');
@@ -258,11 +350,17 @@ document.getElementById('cancelGroup')!.addEventListener('click', () => {
   editingGroupId = null;
 
   const nameInput = document.getElementById('groupName') as HTMLInputElement;
-  const colorInput = document.getElementById('groupColor') as HTMLInputElement;
+  const lightBgInput = document.getElementById('groupLightBg') as HTMLInputElement;
+  const lightTextInput = document.getElementById('groupLightText') as HTMLInputElement;
+  const darkBgInput = document.getElementById('groupDarkBg') as HTMLInputElement;
+  const darkTextInput = document.getElementById('groupDarkText') as HTMLInputElement;
   const phrasesInput = document.getElementById('groupPhrases') as HTMLTextAreaElement;
 
   nameInput.value = '';
-  colorInput.value = '#ffff00';
+  lightBgInput.value = '#ffff00';
+  lightTextInput.value = '#000000';
+  darkBgInput.value = '#3a3a00';
+  darkTextInput.value = '#ffffff';
   phrasesInput.value = '';
 
   render();
@@ -273,6 +371,10 @@ document.getElementById('cancelDomain')!.addEventListener('click', () => {
 
   const patternInput = document.getElementById('domainPattern') as HTMLInputElement;
   patternInput.value = '';
+
+  // Reset mode to light
+  const lightRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"][value="light"]');
+  if (lightRadio) lightRadio.checked = true;
 
   const checkboxes = document.querySelectorAll<HTMLInputElement>('.domain-group-checkbox:checked');
   checkboxes.forEach(cb => cb.checked = false);
