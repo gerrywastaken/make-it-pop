@@ -3,7 +3,7 @@
   "name": "Make It Pop",
   "version": "1.0.0",
   "description": "Highlight phrases on web pages",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Make It Pop"
