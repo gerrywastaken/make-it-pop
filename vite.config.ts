@@ -30,7 +30,9 @@ export default defineConfig({
           try { mkdirSync('dist', { recursive: true }); } catch {}
           copyFileSync('public/manifest.json', 'dist/manifest.json');
           copyFileSync('src/settings/settings.html', 'dist/settings.html');
+          copyFileSync('src/settings/settings.css', 'dist/settings.css');
           copyFileSync('src/popup.html', 'dist/popup.html');
+          copyFileSync('src/popup.css', 'dist/popup.css');
         }
       }
     }

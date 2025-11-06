@@ -1,0 +1,248 @@
+/* Light mode colors (default) */
+:root {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+  --border-color: #ddd;
+  --input-bg: #ffffff;
+  --input-border: #ccc;
+  --input-focus-border: #4CAF50;
+  --button-primary-bg: #4CAF50;
+  --button-primary-hover: #45a049;
+  --button-danger-bg: #f44336;
+  --button-danger-hover: #da190b;
+  --button-secondary-bg: #666;
+  --button-secondary-hover: #555;
+  --button-text: #ffffff;
+  --card-bg: #f9f9f9;
+  --card-border: #ddd;
+  --heading-color: #333;
+  --label-color: #666;
+  --divider-color: #ddd;
+}
+
+/* Dark mode colors */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #1e1e1e;
+    --text-color: #e0e0e0;
+    --border-color: #444;
+    --input-bg: #2a2a2a;
+    --input-border: #444;
+    --input-focus-border: #5cb85c;
+    --button-primary-bg: #5cb85c;
+    --button-primary-hover: #4cae4c;
+    --button-danger-bg: #d32f2f;
+    --button-danger-hover: #b71c1c;
+    --button-secondary-bg: #555;
+    --button-secondary-hover: #666;
+    --button-text: #ffffff;
+    --card-bg: #2a2a2a;
+    --card-border: #444;
+    --heading-color: #e0e0e0;
+    --label-color: #999;
+    --divider-color: #444;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+  line-height: 1.6;
+}
+
+h1 {
+  color: var(--heading-color);
+  font-size: 28px;
+  margin: 0 0 30px 0;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+h2 {
+  color: var(--heading-color);
+  font-size: 22px;
+  margin: 30px 0 15px 0;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--divider-color);
+  margin: 40px 0;
+}
+
+/* Form Controls */
+input[type="text"],
+input[type="color"],
+textarea {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+input[type="text"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--input-focus-border);
+}
+
+input[type="text"] {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+input[type="color"] {
+  width: 60px;
+  height: 32px;
+  padding: 2px;
+  cursor: pointer;
+}
+
+textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  margin-bottom: 10px;
+}
+
+/* Radio Buttons */
+input[type="radio"] {
+  margin-right: 5px;
+  cursor: pointer;
+}
+
+label {
+  color: var(--text-color);
+  margin-right: 15px;
+  cursor: pointer;
+}
+
+strong {
+  color: var(--label-color);
+  font-weight: 600;
+  display: inline-block;
+  margin-top: 8px;
+}
+
+/* Buttons */
+button {
+  padding: 10px 20px;
+  margin: 5px 5px 5px 0;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.2s;
+}
+
+#addGroup,
+#addDomain {
+  background-color: var(--button-primary-bg);
+  color: var(--button-text);
+}
+
+#addGroup:hover,
+#addDomain:hover {
+  background-color: var(--button-primary-hover);
+}
+
+#cancelGroup,
+#cancelDomain {
+  background-color: var(--button-secondary-bg);
+  color: var(--button-text);
+}
+
+#cancelGroup:hover,
+#cancelDomain:hover {
+  background-color: var(--button-secondary-hover);
+}
+
+button[onclick*="deleteGroup"],
+button[onclick*="deleteDomain"] {
+  background-color: var(--button-danger-bg);
+  color: var(--button-text);
+}
+
+button[onclick*="deleteGroup"]:hover,
+button[onclick*="deleteDomain"]:hover {
+  background-color: var(--button-danger-hover);
+}
+
+button[onclick*="editGroup"],
+button[onclick*="editDomain"] {
+  background-color: var(--button-secondary-bg);
+  color: var(--button-text);
+}
+
+button[onclick*="editGroup"]:hover,
+button[onclick*="editDomain"]:hover {
+  background-color: var(--button-secondary-hover);
+}
+
+/* Cards for Groups and Domains */
+.group-item,
+.domain-item {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.group-item h3,
+.domain-item h3 {
+  margin: 0 0 10px 0;
+  color: var(--heading-color);
+  font-size: 18px;
+}
+
+.group-item p,
+.domain-item p {
+  margin: 5px 0;
+  color: var(--text-color);
+}
+
+.color-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid var(--border-color);
+  vertical-align: middle;
+  margin-left: 5px;
+}
+
+/* Checkbox Groups */
+#domainGroupsSelection {
+  margin: 10px 0;
+}
+
+#domainGroupsSelection label {
+  display: block;
+  margin: 5px 0;
+  padding: 5px;
+}
+
+#domainGroupsSelection input[type="checkbox"] {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+/* Form Container Styling */
+#groupsList,
+#domainsList {
+  margin-top: 20px;
+}
