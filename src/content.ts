@@ -133,6 +133,45 @@ const SKIP_TAGS = new Set([
   'SELECT', 'OPTION', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED'
 ]);
 
+function isReactManaged(element: Element): boolean {
+  // Check for React fiber properties (React 16+)
+  const keys = Object.keys(element);
+  for (const key of keys) {
+    if (key.startsWith('__reactFiber') ||
+        key.startsWith('__reactProps') ||
+        key.startsWith('__reactInternalInstance')) {
+      return true;
+    }
+  }
+
+  // Check for common React root markers
+  if (element.id === 'root' ||
+      element.id === 'app' ||
+      element.id === '__next' ||
+      element.hasAttribute('data-reactroot')) {
+    return true;
+  }
+
+  return false;
+}
+
+function isWithinReactTree(node: Node): boolean {
+  let current: Node | null = node;
+
+  // Walk up the tree checking each element
+  while (current && current !== document.body) {
+    if (current.nodeType === Node.ELEMENT_NODE) {
+      const element = current as Element;
+      if (isReactManaged(element)) {
+        return true;
+      }
+    }
+    current = current.parentNode;
+  }
+
+  return false;
+}
+
 function shouldSkipElement(element: Element): boolean {
   // Skip if it's one of the forbidden tags
   if (SKIP_TAGS.has(element.tagName)) {
@@ -142,6 +181,12 @@ function shouldSkipElement(element: Element): boolean {
   if (element.isContentEditable) {
     return true;
   }
+
+  // Skip if this element or any parent is React-managed
+  if (isWithinReactTree(element)) {
+    return true;
+  }
+
   return false;
 }
 
@@ -150,6 +195,11 @@ function walkTextNodes(node: Node, phraseMap: Map<string, {bgColor: string, text
   if (node.nodeType === Node.TEXT_NODE) {
     const parent = node.parentNode;
     if (!parent) return;
+
+    // Skip if within React tree
+    if (isWithinReactTree(node)) {
+      return;
+    }
 
     // Skip if parent is a forbidden element
     if (parent.nodeType === Node.ELEMENT_NODE && shouldSkipElement(parent as Element)) {
@@ -199,6 +249,11 @@ function highlightNewContent() {
 const debouncedHighlight = debounce(highlightNewContent, 3000);
 
 async function highlightPage() {
+  // Check if extension is enabled
+  const enabledData = await browserAPI.storage.local.get('enabled');
+  const enabled = enabledData.enabled !== false; // Default to true if not set
+  if (!enabled) return;
+
   const hostname = window.location.hostname;
   const domains = await getDomains();
 
@@ -236,4 +291,18 @@ async function highlightPage() {
   });
 }
 
-highlightPage();
+// Wait for page to fully load and React hydration to complete before highlighting
+function initHighlighting() {
+  // If page is already loaded, wait a bit for hydration
+  if (document.readyState === 'complete') {
+    // Give React time to hydrate (typical hydration takes 100-500ms)
+    setTimeout(highlightPage, 500);
+  } else {
+    // Wait for full page load, then delay for hydration
+    window.addEventListener('load', () => {
+      setTimeout(highlightPage, 500);
+    });
+  }
+}
+
+initHighlighting();
