@@ -93,38 +93,46 @@ function findMatches(text: string, phraseMap: Map<string, {bgColor: string, text
   return matches;
 }
 
-function highlightTextNode(node: Text, phraseMap: Map<string, {bgColor: string, textColor: string}>) {
+// Process ONE match at a time using atomic operations to prevent race conditions
+// The recursive traversal will naturally catch subsequent matches in the new text nodes
+function highlightTextNode(node: Text, phraseMap: Map<string, {bgColor: string, textColor: string}>, loopNumber: number) {
   const text = node.textContent || '';
-  const matches = findMatches(text, phraseMap);
+  if (text.trim() === '') return;
 
+  const matches = findMatches(text, phraseMap);
   if (matches.length === 0) return;
 
   const parent = node.parentNode;
   if (!parent) return;
 
-  const fragment = document.createDocumentFragment();
-  let lastIndex = 0;
+  // Only process the FIRST match - atomic operations prevent race conditions
+  const match = matches[0];
 
-  for (const match of matches) {
-    if (match.start > lastIndex) {
-      fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.start)));
-    }
+  try {
+    // Split text node at match position (atomic operation)
+    const after = node.splitText(match.start);
 
+    // Remove matched portion from the "after" node (atomic operation)
+    after.nodeValue = after.nodeValue!.substring(match.end - match.start);
+
+    // Create highlight span
     const span = document.createElement('span');
     span.style.backgroundColor = match.bgColor;
     span.style.color = match.textColor;
+    span.style.padding = '1px';
+    span.style.boxShadow = '1px 1px #e5e5e5';
+    span.style.borderRadius = '3px';
+    span.style.fontStyle = 'inherit';
     span.setAttribute('data-makeitpop-highlight', 'true');
+    span.setAttribute('data-makeitpop-loop', loopNumber.toString());
     span.textContent = text.slice(match.start, match.end);
-    fragment.appendChild(span);
 
-    lastIndex = match.end;
+    // Insert highlight between the two text nodes (atomic operation)
+    parent.insertBefore(span, after);
+  } catch (e) {
+    // Node was removed by framework during operation - bail out gracefully
+    return;
   }
-
-  if (lastIndex < text.length) {
-    fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
-  }
-
-  parent.replaceChild(fragment, node);
 }
 
 // Elements we should never highlight inside
@@ -132,45 +140,6 @@ const SKIP_TAGS = new Set([
   'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT',
   'SELECT', 'OPTION', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED'
 ]);
-
-function isReactManaged(element: Element): boolean {
-  // Check for React fiber properties (React 16+)
-  const keys = Object.keys(element);
-  for (const key of keys) {
-    if (key.startsWith('__reactFiber') ||
-        key.startsWith('__reactProps') ||
-        key.startsWith('__reactInternalInstance')) {
-      return true;
-    }
-  }
-
-  // Check for common React root markers
-  if (element.id === 'root' ||
-      element.id === 'app' ||
-      element.id === '__next' ||
-      element.hasAttribute('data-reactroot')) {
-    return true;
-  }
-
-  return false;
-}
-
-function isWithinReactTree(node: Node): boolean {
-  let current: Node | null = node;
-
-  // Walk up the tree checking each element
-  while (current && current !== document.body) {
-    if (current.nodeType === Node.ELEMENT_NODE) {
-      const element = current as Element;
-      if (isReactManaged(element)) {
-        return true;
-      }
-    }
-    current = current.parentNode;
-  }
-
-  return false;
-}
 
 function shouldSkipElement(element: Element): boolean {
   // Skip if it's one of the forbidden tags
@@ -182,40 +151,36 @@ function shouldSkipElement(element: Element): boolean {
     return true;
   }
 
-  // Skip if this element or any parent is React-managed
-  if (isWithinReactTree(element)) {
-    return true;
-  }
-
+  // No React detection needed - atomic operations work fine with React
   return false;
 }
 
-function walkTextNodes(node: Node, phraseMap: Map<string, {bgColor: string, textColor: string}>) {
-  // Skip if this node or its parent is already a highlight span
+function walkTextNodes(node: Node, phraseMap: Map<string, {bgColor: string, textColor: string}>, loopNumber: number) {
   if (node.nodeType === Node.TEXT_NODE) {
     const parent = node.parentNode;
     if (!parent) return;
-
-    // Skip if within React tree
-    if (isWithinReactTree(node)) {
-      return;
-    }
 
     // Skip if parent is a forbidden element
     if (parent.nodeType === Node.ELEMENT_NODE && shouldSkipElement(parent as Element)) {
       return;
     }
 
+    // Skip if parent is already a highlight span from THIS loop
+    // (Highlights from previous loops will be encountered as elements below)
     if ((parent as Element).hasAttribute?.('data-makeitpop-highlight')) {
-      return; // Already highlighted
+      const parentLoop = (parent as Element).getAttribute('data-makeitpop-loop');
+      if (parentLoop === loopNumber.toString()) {
+        return; // Already processed in this loop
+      }
     }
-    highlightTextNode(node as Text, phraseMap);
+
+    highlightTextNode(node as Text, phraseMap, loopNumber);
   } else if (node.nodeType === Node.ELEMENT_NODE) {
     const element = node as Element;
 
-    // Skip our own highlight spans
+    // Skip our own highlight spans (but we'll traverse children to re-count)
     if (element.hasAttribute('data-makeitpop-highlight')) {
-      return;
+      return; // Don't traverse into highlights
     }
 
     // Skip forbidden elements entirely
@@ -223,9 +188,10 @@ function walkTextNodes(node: Node, phraseMap: Map<string, {bgColor: string, text
       return;
     }
 
+    // Use Array.from to avoid live NodeList issues during DOM manipulation
     const children = Array.from(node.childNodes);
     for (const child of children) {
-      walkTextNodes(child, phraseMap);
+      walkTextNodes(child, phraseMap, loopNumber);
     }
   }
 }
@@ -239,11 +205,24 @@ function debounce(func: Function, wait: number): Function {
   };
 }
 
+// Global state for highlighting with concurrency control
 let globalPhraseMap: Map<string, {bgColor: string, textColor: string}> | null = null;
+let shouldHighlight = false; // Flag indicating highlight needed
+let isHighlighting = false; // Lock to prevent concurrent execution
+let currentLoopNumber = 0; // Unique ID for each highlighting pass
 
 function highlightNewContent() {
-  if (!globalPhraseMap) return;
-  walkTextNodes(document.body, globalPhraseMap);
+  if (!globalPhraseMap || isHighlighting) return;
+
+  isHighlighting = true;
+  shouldHighlight = false;
+  currentLoopNumber = Math.floor(Math.random() * 1000000000); // Random loop ID to track this pass
+
+  try {
+    walkTextNodes(document.body, globalPhraseMap, currentLoopNumber);
+  } finally {
+    isHighlighting = false;
+  }
 }
 
 const debouncedHighlight = debounce(highlightNewContent, 3000);
@@ -278,10 +257,13 @@ async function highlightPage() {
   globalPhraseMap = phraseMap;
 
   // Initial highlight
-  walkTextNodes(document.body, phraseMap);
+  currentLoopNumber = Math.floor(Math.random() * 1000000000);
+  walkTextNodes(document.body, phraseMap, currentLoopNumber);
 
   // Set up MutationObserver for dynamic content
+  // Observer just sets flag, debounced function does actual work to avoid excessive re-highlights
   const observer = new MutationObserver((mutations) => {
+    shouldHighlight = true;
     debouncedHighlight();
   });
 
