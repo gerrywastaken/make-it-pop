@@ -2,9 +2,7 @@ name: Build Extension
 
 on:
   push:
-    branches: [ main, master, claude/** ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -58,3 +56,29 @@ jobs:
           name: extension-zip-${{ github.sha }}
           path: makeitpop-extension.zip
           retention-days: 30
+
+      - name: Get version from manifest
+        id: version
+        run: |
+          VERSION=$(cat dist/manifest.json | grep -o '"version": *"[^"]*"' | grep -o '[0-9][^"]*')
+          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
+          RELEASE_TAG="v${VERSION}-${TIMESTAMP}"
+          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "Release tag: ${RELEASE_TAG}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Extension Build ${{ steps.version.outputs.tag }}
+          body: |
+            Automated extension build from commit ${{ github.sha }}
+
+            **Branch:** ${{ github.ref_name }}
+            **Build Date:** ${{ github.event.head_commit.timestamp }}
+            **Commit:** ${{ github.event.head_commit.message }}
+
+            Download `makeitpop-extension.zip` below and load it as an unpacked extension in Chrome/Firefox.
+          files: makeitpop-extension.zip
+          draft: false
+          prerelease: false
