@@ -178,7 +178,7 @@ function shouldSkipElement(element: Element): boolean {
     return true;
   }
   // Skip contenteditable elements (rich text editors)
-  if (element.isContentEditable) {
+  if ((element as HTMLElement).isContentEditable) {
     return true;
   }
 
