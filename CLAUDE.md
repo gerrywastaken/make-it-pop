@@ -8,8 +8,9 @@ A cross-browser (Chrome/Firefox) extension that highlights multi-word phrases on
 ### 1. Groups
 - Each group has:
   - Name (e.g., "Good phrases", "Bad phrases")
-  - Light mode highlight color
-  - Dark mode highlight color
+  - Enabled flag (global on/off toggle)
+  - Light mode highlight color (background + text)
+  - Dark mode highlight color (background + text)
   - List of multi-word phrases (case-insensitive)
 
 ### 2. Domains
@@ -18,7 +19,10 @@ A cross-browser (Chrome/Firefox) extension that highlights multi-word phrases on
 - Each domain has:
   - Domain pattern
   - Mode setting: "light" or "dark" (manual)
-  - Assigned groups (multiple groups per domain)
+  - Group filtering (optional):
+    - **Default**: Uses all enabled groups
+    - **Only mode**: Uses only specified groups (e.g., `groups: ["Good", "Great"], groupMode: "only"`)
+    - **Except mode**: Uses all groups except specified (e.g., `groups: ["DEI"], groupMode: "except"`)
 
 ### 3. Highlighting Behavior
 - **Case-insensitive matching**: "Code Review" matches "code review", "CODE REVIEW", etc.
@@ -71,8 +75,11 @@ makeitpop/
 interface Group {
   id: string;                   // UUID
   name: string;
-  lightColor: string;           // hex color for light mode
-  darkColor: string;            // hex color for dark mode
+  enabled: boolean;             // Global on/off toggle
+  lightBgColor: string;         // hex color for light mode background
+  lightTextColor: string;       // hex color for light mode text
+  darkBgColor: string;          // hex color for dark mode background
+  darkTextColor: string;        // hex color for dark mode text
   phrases: string[];            // multi-word phrases
 }
 
@@ -80,7 +87,8 @@ interface Domain {
   id: string;                   // UUID
   pattern: string;              // e.g., "*.linkedin.com" or "linkedin.com"
   mode: 'light' | 'dark';       // manual setting
-  groupIds: string[];           // references to Group.id
+  groups?: string[];            // Optional: group names (omit for "all enabled groups")
+  groupMode?: 'only' | 'except'; // Optional: defaults to 'only' if groups specified
 }
 
 interface StorageData {
@@ -94,24 +102,32 @@ interface StorageData {
 #### 1. Content Script (`content.ts`)
 - Runs on all pages initially, checks if current domain matches any configured patterns
 - If match found:
-  - Fetches groups assigned to that domain
-  - Fetches domain mode (light/dark)
-  - Builds phrase-to-color map (using appropriate color for mode)
-  - Highlights all text nodes
-  - Sets up MutationObserver with 3-second debounce
+  1. Fetches all groups and filters to enabled groups only
+  2. Applies domain-specific group filtering:
+     - No `groups` field → use all enabled groups
+     - `groupMode: 'only'` → use only specified groups (that are also enabled)
+     - `groupMode: 'except'` → use all enabled groups except specified
+  3. Fetches domain mode (light/dark)
+  4. Builds phrase-to-color map (using appropriate color for mode)
+  5. Highlights all text nodes
+  6. Sets up MutationObserver with 3-second debounce
 - **Longest match algorithm**: Sort phrases by length (descending) before matching
 
 #### 2. Settings Page (`settings/settings.ts`)
 - CRUD for groups:
   - Create/edit/delete groups
+  - Toggle enabled/disabled (checkbox per group)
   - Add/remove phrases
-  - Set light/dark colors (color picker inputs)
+  - Set light/dark colors (background + text color pickers)
 - CRUD for domains:
   - Add/edit/delete domain patterns
   - Set light/dark mode
-  - Assign/unassign groups (multi-select or checkboxes)
-- Export button: downloads JSON file
-- Import button: uploads and validates JSON file
+  - Choose group filtering mode:
+    - **All enabled groups** (default, no config needed)
+    - **Only these groups** (select specific groups to include)
+    - **All except these groups** (select specific groups to exclude)
+- Export button: downloads JSON5 file
+- Import button: uploads and validates JSON/JSON5 file
 
 #### 3. Storage Helpers (`storage.ts`)
 - `getGroups()`: Returns all groups

@@ -1,6 +1,7 @@
 export interface Group {
   id: string;
   name: string;
+  enabled: boolean;  // Global on/off toggle for this group
   lightBgColor: string;
   lightTextColor: string;
   darkBgColor: string;
@@ -12,7 +13,8 @@ export interface Domain {
   id: string;
   pattern: string;
   mode: 'light' | 'dark';
-  groupIds: string[];
+  groups?: string[];  // List of group names (optional, omit for "all enabled groups")
+  groupMode?: 'only' | 'except';  // Defaults to 'only' if groups specified
 }
 
 export interface StorageData {
