@@ -1,0 +1,82 @@
+// Make It Pop Configuration Example
+// This file uses JSON5 format - a more human-friendly version of JSON
+//
+// Key features:
+// - No quotes needed around property names
+// - Trailing commas are allowed
+// - Comments are supported (like this!)
+// - Hex color codes must still be in quotes
+//
+// To use: Import this file in the extension settings
+
+{
+  // Groups define sets of phrases with their highlight colors
+  groups: [
+    {
+      name: "Good phrases",           // Must be unique
+      lightBg: "#90ee90",             // Light mode background color
+      lightText: "#000000",           // Light mode text color
+      darkBg: "#2d5016",              // Dark mode background color
+      darkText: "#ffffff",            // Dark mode text color
+      phrases: [
+        "code review",
+        "unit test",
+        "documentation",
+        "best practice",
+      ],
+    },
+    {
+      name: "Warning phrases",
+      lightBg: "#ffeb3b",
+      lightText: "#000000",
+      darkBg: "#665c00",
+      darkText: "#ffffff",
+      phrases: [
+        "needs improvement",
+        "technical debt",
+        "code smell",
+      ],
+    },
+    {
+      name: "Critical issues",
+      lightBg: "#ff6b6b",
+      lightText: "#000000",
+      darkBg: "#8b0000",
+      darkText: "#ffffff",
+      phrases: [
+        "security vulnerability",
+        "data leak",
+        "critical bug",
+      ],
+    },
+  ],
+
+  // Domains define where and how to apply highlighting
+  domains: [
+    {
+      pattern: "*.linkedin.com",      // Matches linkedin.com and all subdomains
+      mode: "light",                  // Use "light" or "dark" colors
+      groups: [                       // Reference groups by name
+        "Good phrases",
+        "Warning phrases",
+      ],
+    },
+    {
+      pattern: "github.com",          // Exact match only
+      mode: "dark",
+      groups: [
+        "Good phrases",
+        "Critical issues",
+      ],
+    },
+    {
+      pattern: "*.reddit.com",
+      mode: "light",
+      groups: [
+        "Good phrases",
+        "Warning phrases",
+        "Critical issues",
+      ],
+    },
+  ],
+}

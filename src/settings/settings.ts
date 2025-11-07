@@ -1,3 +1,5 @@
+import JSON5 from 'json5';
+
 // Inline types
 interface Group {
   id: string;
@@ -14,6 +16,27 @@ interface Domain {
   pattern: string;
   mode: 'light' | 'dark';
   groupIds: string[];
+}
+
+// Export format types (user-friendly, no IDs)
+interface ExportGroup {
+  name: string;
+  lightBg: string;
+  lightText: string;
+  darkBg: string;
+  darkText: string;
+  phrases: string[];
+}
+
+interface ExportDomain {
+  pattern: string;
+  mode: 'light' | 'dark';
+  groups: string[]; // group names instead of IDs
+}
+
+interface ExportData {
+  groups: ExportGroup[];
+  domains: ExportDomain[];
 }
 
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
@@ -35,6 +58,122 @@ async function getDomains(): Promise<Domain[]> {
 
 async function saveDomains(domains: Domain[]): Promise<void> {
   await browserAPI.storage.local.set({ domains });
+}
+
+async function exportData(): Promise<string> {
+  // Convert to export format (no IDs, name-based references)
+  const exportGroups: ExportGroup[] = groups.map(g => ({
+    name: g.name,
+    lightBg: g.lightBgColor,
+    lightText: g.lightTextColor,
+    darkBg: g.darkBgColor,
+    darkText: g.darkTextColor,
+    phrases: g.phrases,
+  }));
+
+  // Build ID to name map for groups
+  const idToName = new Map(groups.map(g => [g.id, g.name]));
+
+  const exportDomains: ExportDomain[] = domains.map(d => ({
+    pattern: d.pattern,
+    mode: d.mode,
+    groups: d.groupIds.map(id => idToName.get(id) || id).filter(Boolean),
+  }));
+
+  const data: ExportData = { groups: exportGroups, domains: exportDomains };
+
+  // Use JSON5 stringify for cleaner output (no quotes on keys)
+  return JSON5.stringify(data, null, 2);
+}
+
+async function importData(jsonString: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Parse with JSON5 to support relaxed syntax
+    const data = JSON5.parse(jsonString) as ExportData;
+
+    // Validate the structure
+    if (!data.groups || !Array.isArray(data.groups)) {
+      return { success: false, error: 'Invalid format: missing or invalid "groups" array' };
+    }
+    if (!data.domains || !Array.isArray(data.domains)) {
+      return { success: false, error: 'Invalid format: missing or invalid "domains" array' };
+    }
+
+    // Convert groups to internal format with generated IDs
+    const nameToId = new Map<string, string>();
+    const newGroups: Group[] = [];
+
+    for (const exportGroup of data.groups) {
+      // Validate group
+      if (!exportGroup.name || !exportGroup.phrases || !Array.isArray(exportGroup.phrases)) {
+        return { success: false, error: `Invalid group format: missing required fields (name: "${exportGroup.name || 'missing'}")` };
+      }
+      if (!exportGroup.lightBg || !exportGroup.lightText || !exportGroup.darkBg || !exportGroup.darkText) {
+        return { success: false, error: `Invalid group "${exportGroup.name}": missing color fields` };
+      }
+
+      // Check for duplicate group names
+      if (nameToId.has(exportGroup.name)) {
+        return { success: false, error: `Duplicate group name: "${exportGroup.name}"` };
+      }
+
+      const id = crypto.randomUUID();
+      nameToId.set(exportGroup.name, id);
+
+      newGroups.push({
+        id,
+        name: exportGroup.name,
+        lightBgColor: exportGroup.lightBg,
+        lightTextColor: exportGroup.lightText,
+        darkBgColor: exportGroup.darkBg,
+        darkTextColor: exportGroup.darkText,
+        phrases: exportGroup.phrases,
+      });
+    }
+
+    // Convert domains to internal format
+    const newDomains: Domain[] = [];
+
+    for (const exportDomain of data.domains) {
+      // Validate domain
+      if (!exportDomain.pattern || !exportDomain.mode || !exportDomain.groups || !Array.isArray(exportDomain.groups)) {
+        return { success: false, error: `Invalid domain format: missing required fields (pattern: "${exportDomain.pattern || 'missing'}")` };
+      }
+      if (exportDomain.mode !== 'light' && exportDomain.mode !== 'dark') {
+        return { success: false, error: `Invalid domain "${exportDomain.pattern}": mode must be "light" or "dark"` };
+      }
+
+      // Convert group names to IDs
+      const groupIds: string[] = [];
+      for (const groupName of exportDomain.groups) {
+        const groupId = nameToId.get(groupName);
+        if (!groupId) {
+          return { success: false, error: `Domain "${exportDomain.pattern}" references unknown group: "${groupName}"` };
+        }
+        groupIds.push(groupId);
+      }
+
+      newDomains.push({
+        id: crypto.randomUUID(),
+        pattern: exportDomain.pattern,
+        mode: exportDomain.mode,
+        groupIds,
+      });
+    }
+
+    // If validation passes, save the data
+    groups = newGroups;
+    domains = newDomains;
+    await saveGroups(groups);
+    await saveDomains(domains);
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return { success: false, error: 'Invalid JSON/JSON5 format: ' + error.message };
+    }
+    return { success: false, error: String(error) };
+  }
 }
 
 let groups: Group[] = [];
@@ -380,6 +519,71 @@ document.getElementById('cancelDomain')!.addEventListener('click', () => {
   checkboxes.forEach(cb => cb.checked = false);
 
   render();
+});
+
+// Export data handler
+document.getElementById('exportData')!.addEventListener('click', async () => {
+  const jsonData = await exportData();
+  const blob = new Blob([jsonData], { type: 'application/json5' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  a.download = `makeitpop-config-${date}.json5`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// Import data handler
+document.getElementById('importData')!.addEventListener('click', () => {
+  const fileInput = document.getElementById('importFile') as HTMLInputElement;
+  fileInput.click();
+});
+
+document.getElementById('importFile')!.addEventListener('change', async (e) => {
+  const fileInput = e.target as HTMLInputElement;
+  const statusDiv = document.getElementById('importStatus')!;
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async (event) => {
+    const content = event.target?.result as string;
+    const result = await importData(content);
+
+    if (result.success) {
+      statusDiv.textContent = 'Configuration imported successfully!';
+      statusDiv.style.color = 'green';
+      render(); // Re-render to show imported data
+    } else {
+      statusDiv.textContent = `Import failed: ${result.error}`;
+      statusDiv.style.color = 'red';
+    }
+
+    // Clear status after 5 seconds
+    setTimeout(() => {
+      statusDiv.textContent = '';
+    }, 5000);
+  };
+
+  reader.onerror = () => {
+    statusDiv.textContent = 'Error reading file';
+    statusDiv.style.color = 'red';
+    setTimeout(() => {
+      statusDiv.textContent = '';
+    }, 5000);
+  };
+
+  reader.readAsText(file);
+
+  // Reset file input so the same file can be selected again
+  fileInput.value = '';
 });
 
 init();
