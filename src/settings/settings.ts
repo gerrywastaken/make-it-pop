@@ -1,3 +1,5 @@
+import JSON5 from 'json5';
+
 // Inline types
 interface Group {
   id: string;
@@ -14,6 +16,27 @@ interface Domain {
   pattern: string;
   mode: 'light' | 'dark';
   groupIds: string[];
+}
+
+// Export format types (user-friendly, no IDs)
+interface ExportGroup {
+  name: string;
+  lightBg: string;
+  lightText: string;
+  darkBg: string;
+  darkText: string;
+  phrases: string[];
+}
+
+interface ExportDomain {
+  pattern: string;
+  mode: 'light' | 'dark';
+  groups: string[]; // group names instead of IDs
+}
+
+interface ExportData {
+  groups: ExportGroup[];
+  domains: ExportDomain[];
 }
 
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
@@ -38,13 +61,35 @@ async function saveDomains(domains: Domain[]): Promise<void> {
 }
 
 async function exportData(): Promise<string> {
-  const data = { groups, domains };
-  return JSON.stringify(data, null, 2);
+  // Convert to export format (no IDs, name-based references)
+  const exportGroups: ExportGroup[] = groups.map(g => ({
+    name: g.name,
+    lightBg: g.lightBgColor,
+    lightText: g.lightTextColor,
+    darkBg: g.darkBgColor,
+    darkText: g.darkTextColor,
+    phrases: g.phrases,
+  }));
+
+  // Build ID to name map for groups
+  const idToName = new Map(groups.map(g => [g.id, g.name]));
+
+  const exportDomains: ExportDomain[] = domains.map(d => ({
+    pattern: d.pattern,
+    mode: d.mode,
+    groups: d.groupIds.map(id => idToName.get(id) || id).filter(Boolean),
+  }));
+
+  const data: ExportData = { groups: exportGroups, domains: exportDomains };
+
+  // Use JSON5 stringify for cleaner output (no quotes on keys)
+  return JSON5.stringify(data, null, 2);
 }
 
 async function importData(jsonString: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const data = JSON.parse(jsonString) as { groups: Group[]; domains: Domain[] };
+    // Parse with JSON5 to support relaxed syntax
+    const data = JSON5.parse(jsonString) as ExportData;
 
     // Validate the structure
     if (!data.groups || !Array.isArray(data.groups)) {
@@ -54,36 +99,78 @@ async function importData(jsonString: string): Promise<{ success: boolean; error
       return { success: false, error: 'Invalid format: missing or invalid "domains" array' };
     }
 
-    // Validate each group
-    for (const group of data.groups) {
-      if (!group.id || !group.name || !group.phrases || !Array.isArray(group.phrases)) {
-        return { success: false, error: 'Invalid group format: missing required fields' };
+    // Convert groups to internal format with generated IDs
+    const nameToId = new Map<string, string>();
+    const newGroups: Group[] = [];
+
+    for (const exportGroup of data.groups) {
+      // Validate group
+      if (!exportGroup.name || !exportGroup.phrases || !Array.isArray(exportGroup.phrases)) {
+        return { success: false, error: `Invalid group format: missing required fields (name: "${exportGroup.name || 'missing'}")` };
       }
-      if (!group.lightBgColor || !group.lightTextColor || !group.darkBgColor || !group.darkTextColor) {
-        return { success: false, error: 'Invalid group format: missing color fields' };
+      if (!exportGroup.lightBg || !exportGroup.lightText || !exportGroup.darkBg || !exportGroup.darkText) {
+        return { success: false, error: `Invalid group "${exportGroup.name}": missing color fields` };
       }
+
+      // Check for duplicate group names
+      if (nameToId.has(exportGroup.name)) {
+        return { success: false, error: `Duplicate group name: "${exportGroup.name}"` };
+      }
+
+      const id = crypto.randomUUID();
+      nameToId.set(exportGroup.name, id);
+
+      newGroups.push({
+        id,
+        name: exportGroup.name,
+        lightBgColor: exportGroup.lightBg,
+        lightTextColor: exportGroup.lightText,
+        darkBgColor: exportGroup.darkBg,
+        darkTextColor: exportGroup.darkText,
+        phrases: exportGroup.phrases,
+      });
     }
 
-    // Validate each domain
-    for (const domain of data.domains) {
-      if (!domain.id || !domain.pattern || !domain.mode || !domain.groupIds || !Array.isArray(domain.groupIds)) {
-        return { success: false, error: 'Invalid domain format: missing required fields' };
+    // Convert domains to internal format
+    const newDomains: Domain[] = [];
+
+    for (const exportDomain of data.domains) {
+      // Validate domain
+      if (!exportDomain.pattern || !exportDomain.mode || !exportDomain.groups || !Array.isArray(exportDomain.groups)) {
+        return { success: false, error: `Invalid domain format: missing required fields (pattern: "${exportDomain.pattern || 'missing'}")` };
       }
-      if (domain.mode !== 'light' && domain.mode !== 'dark') {
-        return { success: false, error: 'Invalid domain mode: must be "light" or "dark"' };
+      if (exportDomain.mode !== 'light' && exportDomain.mode !== 'dark') {
+        return { success: false, error: `Invalid domain "${exportDomain.pattern}": mode must be "light" or "dark"` };
       }
+
+      // Convert group names to IDs
+      const groupIds: string[] = [];
+      for (const groupName of exportDomain.groups) {
+        const groupId = nameToId.get(groupName);
+        if (!groupId) {
+          return { success: false, error: `Domain "${exportDomain.pattern}" references unknown group: "${groupName}"` };
+        }
+        groupIds.push(groupId);
+      }
+
+      newDomains.push({
+        id: crypto.randomUUID(),
+        pattern: exportDomain.pattern,
+        mode: exportDomain.mode,
+        groupIds,
+      });
     }
 
     // If validation passes, save the data
-    groups = data.groups;
-    domains = data.domains;
+    groups = newGroups;
+    domains = newDomains;
     await saveGroups(groups);
     await saveDomains(domains);
 
     return { success: true };
   } catch (error) {
     if (error instanceof SyntaxError) {
-      return { success: false, error: 'Invalid JSON format' };
+      return { success: false, error: 'Invalid JSON/JSON5 format: ' + error.message };
     }
     return { success: false, error: String(error) };
   }
@@ -437,12 +524,12 @@ document.getElementById('cancelDomain')!.addEventListener('click', () => {
 // Export data handler
 document.getElementById('exportData')!.addEventListener('click', async () => {
   const jsonData = await exportData();
-  const blob = new Blob([jsonData], { type: 'application/json' });
+  const blob = new Blob([jsonData], { type: 'application/json5' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-  a.download = `makeitpop-config-${date}.json`;
+  a.download = `makeitpop-config-${date}.json5`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
