@@ -45,11 +45,34 @@ interface ExportData {
 
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
-// HTML escaping helper to prevent XSS
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+// DOM helper functions to safely create elements without innerHTML
+function createElement<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  options?: {
+    textContent?: string;
+    className?: string;
+    style?: Partial<CSSStyleDeclaration>;
+    attributes?: Record<string, string>;
+    children?: (HTMLElement | Text)[];
+  }
+): HTMLElementTagNameMap[K] {
+  const element = document.createElement(tag);
+  if (options?.textContent) element.textContent = options.textContent;
+  if (options?.className) element.className = options.className;
+  if (options?.style) Object.assign(element.style, options.style);
+  if (options?.attributes) {
+    Object.entries(options.attributes).forEach(([key, value]) => {
+      element.setAttribute(key, value);
+    });
+  }
+  if (options?.children) {
+    options.children.forEach(child => element.appendChild(child));
+  }
+  return element;
+}
+
+function createText(text: string): Text {
+  return document.createTextNode(text);
 }
 
 // Inline storage functions
@@ -311,19 +334,81 @@ function render() {
 
 function renderGroups() {
   const list = document.getElementById('groupsList')!;
-  list.innerHTML = groups.map(g => `
-    <div style="${!g.enabled ? 'opacity: 0.5;' : ''}">
-      <label>
-        <input type="checkbox" class="toggle-group-enabled" data-id="${escapeHtml(g.id)}" ${g.enabled ? 'checked' : ''}>
-        <strong>${escapeHtml(g.name)}</strong> ${!g.enabled ? '(disabled)' : ''}
-      </label><br>
-      Light: <span style="background: ${escapeHtml(g.lightBgColor)}; color: ${escapeHtml(g.lightTextColor)}; padding: 2px 8px;">Sample</span>
-      Dark: <span style="background: ${escapeHtml(g.darkBgColor)}; color: ${escapeHtml(g.darkTextColor)}; padding: 2px 8px;">Sample</span>
-      <button class="edit-group" data-id="${escapeHtml(g.id)}">Edit</button>
-      <button class="delete-group" data-id="${escapeHtml(g.id)}">Delete</button>
-      <div>Phrases: ${escapeHtml(g.phrases.join(', '))}</div>
-    </div>
-  `).join('');
+  // Clear existing content
+  list.textContent = '';
+
+  groups.forEach(g => {
+    const container = createElement('div', {
+      style: !g.enabled ? { opacity: '0.5' } : {}
+    });
+
+    // Create checkbox and label
+    const label = createElement('label');
+    const checkbox = createElement('input', {
+      attributes: {
+        type: 'checkbox',
+        'data-id': g.id,
+        ...(g.enabled ? { checked: '' } : {})
+      },
+      className: 'toggle-group-enabled'
+    });
+    const nameStrong = createElement('strong', { textContent: g.name });
+    const disabledText = !g.enabled ? createText(' (disabled)') : null;
+
+    label.appendChild(checkbox);
+    label.appendChild(createText(' '));
+    label.appendChild(nameStrong);
+    if (disabledText) label.appendChild(disabledText);
+    container.appendChild(label);
+    container.appendChild(createElement('br'));
+
+    // Light mode sample
+    container.appendChild(createText('Light: '));
+    container.appendChild(createElement('span', {
+      textContent: 'Sample',
+      style: {
+        background: g.lightBgColor,
+        color: g.lightTextColor,
+        padding: '2px 8px'
+      }
+    }));
+    container.appendChild(createText(' '));
+
+    // Dark mode sample
+    container.appendChild(createText('Dark: '));
+    container.appendChild(createElement('span', {
+      textContent: 'Sample',
+      style: {
+        background: g.darkBgColor,
+        color: g.darkTextColor,
+        padding: '2px 8px'
+      }
+    }));
+    container.appendChild(createText(' '));
+
+    // Edit button
+    container.appendChild(createElement('button', {
+      textContent: 'Edit',
+      className: 'edit-group',
+      attributes: { 'data-id': g.id }
+    }));
+    container.appendChild(createText(' '));
+
+    // Delete button
+    container.appendChild(createElement('button', {
+      textContent: 'Delete',
+      className: 'delete-group',
+      attributes: { 'data-id': g.id }
+    }));
+
+    // Phrases
+    const phrasesDiv = createElement('div');
+    phrasesDiv.appendChild(createText('Phrases: '));
+    phrasesDiv.appendChild(createText(g.phrases.join(', ')));
+    container.appendChild(phrasesDiv);
+
+    list.appendChild(container);
+  });
 
   // Update button text and show/hide cancel
   const btn = document.getElementById('addGroup') as HTMLButtonElement;
@@ -334,29 +419,51 @@ function renderGroups() {
 
 function renderDomains() {
   const list = document.getElementById('domainsList')!;
-  list.innerHTML = domains.map(d => {
+  // Clear existing content
+  list.textContent = '';
+
+  domains.forEach(d => {
+    const container = createElement('div');
+
+    // Pattern (strong)
+    container.appendChild(createElement('strong', { textContent: d.pattern }));
+    container.appendChild(createText(' ('));
+    container.appendChild(createText(d.mode));
+    container.appendChild(createText(' mode) - '));
+
     // Show groups display based on new schema
     let groupsDisplay;
     if (!d.groups || d.groups.length === 0) {
       groupsDisplay = 'All enabled groups';
     } else {
       const groupMode = d.groupMode || 'only';
-      const groupsList = escapeHtml(d.groups.join(', '));
+      const groupsList = d.groups.join(', ');
       if (groupMode === 'only') {
         groupsDisplay = `Only: ${groupsList}`;
       } else {
         groupsDisplay = `All except: ${groupsList}`;
       }
     }
+    container.appendChild(createText(groupsDisplay));
+    container.appendChild(createText(' '));
 
-    return `
-      <div>
-        <strong>${escapeHtml(d.pattern)}</strong> (${escapeHtml(d.mode)} mode) - ${groupsDisplay}
-        <button class="edit-domain" data-id="${escapeHtml(d.id)}">Edit</button>
-        <button class="delete-domain" data-id="${escapeHtml(d.id)}">Delete</button>
-      </div>
-    `;
-  }).join('');
+    // Edit button
+    container.appendChild(createElement('button', {
+      textContent: 'Edit',
+      className: 'edit-domain',
+      attributes: { 'data-id': d.id }
+    }));
+    container.appendChild(createText(' '));
+
+    // Delete button
+    container.appendChild(createElement('button', {
+      textContent: 'Delete',
+      className: 'delete-domain',
+      attributes: { 'data-id': d.id }
+    }));
+
+    list.appendChild(container);
+  });
 
   // Update button text and show/hide cancel
   const btn = document.getElementById('addDomain') as HTMLButtonElement;
@@ -374,43 +481,109 @@ function renderDomainGroupsSelection() {
   const groupMode = hasGroups ? (editingDomain!.groupMode || 'only') : 'only';
   const useAllGroups = !hasGroups;
 
-  container.innerHTML = `
-    <strong>Groups:</strong><br>
-    <label>
-      <input type="radio" name="domainGroupsMode" value="all" ${useAllGroups ? 'checked' : ''}>
-      Use all enabled groups
-    </label><br>
-    <label>
-      <input type="radio" name="domainGroupsMode" value="only" ${hasGroups && groupMode === 'only' ? 'checked' : ''}>
-      Use only these groups:
-    </label><br>
-    <div id="onlyGroupsList" style="margin-left: 20px; ${hasGroups && groupMode === 'only' ? '' : 'display: none;'}">
-      ${groups.map(g => {
-        const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'only';
-        return `
-          <label>
-            <input type="checkbox" value="${escapeHtml(g.name)}" class="only-group-checkbox" ${isChecked ? 'checked' : ''}>
-            ${escapeHtml(g.name)}
-          </label><br>
-        `;
-      }).join('')}
-    </div>
-    <label>
-      <input type="radio" name="domainGroupsMode" value="except" ${hasGroups && groupMode === 'except' ? 'checked' : ''}>
-      Use all except these groups:
-    </label><br>
-    <div id="exceptGroupsList" style="margin-left: 20px; ${hasGroups && groupMode === 'except' ? '' : 'display: none;'}">
-      ${groups.map(g => {
-        const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'except';
-        return `
-          <label>
-            <input type="checkbox" value="${escapeHtml(g.name)}" class="except-group-checkbox" ${isChecked ? 'checked' : ''}>
-            ${escapeHtml(g.name)}
-          </label><br>
-        `;
-      }).join('')}
-    </div>
-  `;
+  // Clear existing content
+  container.textContent = '';
+
+  // Title
+  container.appendChild(createElement('strong', { textContent: 'Groups:' }));
+  container.appendChild(createElement('br'));
+
+  // Radio: Use all enabled groups
+  const allLabel = createElement('label');
+  const allRadio = createElement('input', {
+    attributes: {
+      type: 'radio',
+      name: 'domainGroupsMode',
+      value: 'all',
+      ...(useAllGroups ? { checked: '' } : {})
+    }
+  });
+  allLabel.appendChild(allRadio);
+  allLabel.appendChild(createText(' Use all enabled groups'));
+  container.appendChild(allLabel);
+  container.appendChild(createElement('br'));
+
+  // Radio: Use only these groups
+  const onlyLabel = createElement('label');
+  const onlyRadio = createElement('input', {
+    attributes: {
+      type: 'radio',
+      name: 'domainGroupsMode',
+      value: 'only',
+      ...(hasGroups && groupMode === 'only' ? { checked: '' } : {})
+    }
+  });
+  onlyLabel.appendChild(onlyRadio);
+  onlyLabel.appendChild(createText(' Use only these groups:'));
+  container.appendChild(onlyLabel);
+  container.appendChild(createElement('br'));
+
+  // Only groups list
+  const onlyGroupsList = createElement('div', {
+    attributes: { id: 'onlyGroupsList' },
+    style: {
+      marginLeft: '20px',
+      display: hasGroups && groupMode === 'only' ? 'block' : 'none'
+    }
+  });
+  groups.forEach(g => {
+    const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'only';
+    const label = createElement('label');
+    const checkbox = createElement('input', {
+      attributes: {
+        type: 'checkbox',
+        value: g.name,
+        ...(isChecked ? { checked: '' } : {})
+      },
+      className: 'only-group-checkbox'
+    });
+    label.appendChild(checkbox);
+    label.appendChild(createText(' ' + g.name));
+    onlyGroupsList.appendChild(label);
+    onlyGroupsList.appendChild(createElement('br'));
+  });
+  container.appendChild(onlyGroupsList);
+
+  // Radio: Use all except these groups
+  const exceptLabel = createElement('label');
+  const exceptRadio = createElement('input', {
+    attributes: {
+      type: 'radio',
+      name: 'domainGroupsMode',
+      value: 'except',
+      ...(hasGroups && groupMode === 'except' ? { checked: '' } : {})
+    }
+  });
+  exceptLabel.appendChild(exceptRadio);
+  exceptLabel.appendChild(createText(' Use all except these groups:'));
+  container.appendChild(exceptLabel);
+  container.appendChild(createElement('br'));
+
+  // Except groups list
+  const exceptGroupsList = createElement('div', {
+    attributes: { id: 'exceptGroupsList' },
+    style: {
+      marginLeft: '20px',
+      display: hasGroups && groupMode === 'except' ? 'block' : 'none'
+    }
+  });
+  groups.forEach(g => {
+    const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'except';
+    const label = createElement('label');
+    const checkbox = createElement('input', {
+      attributes: {
+        type: 'checkbox',
+        value: g.name,
+        ...(isChecked ? { checked: '' } : {})
+      },
+      className: 'except-group-checkbox'
+    });
+    label.appendChild(checkbox);
+    label.appendChild(createText(' ' + g.name));
+    exceptGroupsList.appendChild(label);
+    exceptGroupsList.appendChild(createElement('br'));
+  });
+  container.appendChild(exceptGroupsList);
 
   // Add event listeners to show/hide group lists based on selected mode
   const radios = container.querySelectorAll<HTMLInputElement>('input[name="domainGroupsMode"]');
