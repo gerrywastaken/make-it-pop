@@ -2,6 +2,7 @@
 interface Group {
   id: string;
   name: string;
+  enabled: boolean;
   lightBgColor: string;
   lightTextColor: string;
   darkBgColor: string;
@@ -13,7 +14,8 @@ interface Domain {
   id: string;
   pattern: string;
   mode: 'light' | 'dark';
-  groupIds: string[];
+  groups?: string[];  // List of group names (optional, omit for "all enabled groups")
+  groupMode?: 'only' | 'except';  // Defaults to 'only' if groups specified
 }
 
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
@@ -237,10 +239,28 @@ async function highlightPage() {
   const domains = await getDomains();
 
   const matchedDomain = domains.find(d => matchesDomain(d.pattern, hostname));
-  if (!matchedDomain || matchedDomain.groupIds.length === 0) return;
+  if (!matchedDomain) return;
 
-  const groups = await getGroups();
-  const activeGroups = groups.filter(g => matchedDomain.groupIds.includes(g.id));
+  const allGroups = await getGroups();
+
+  // Step 1: Start with all enabled groups
+  let activeGroups = allGroups.filter(g => g.enabled);
+
+  // Step 2: Apply domain filters if specified
+  if (matchedDomain.groups && matchedDomain.groups.length > 0) {
+    const groupMode = matchedDomain.groupMode || 'only'; // Default to 'only'
+
+    if (groupMode === 'only') {
+      // Include only specified groups
+      activeGroups = activeGroups.filter(g => matchedDomain.groups!.includes(g.name));
+    } else if (groupMode === 'except') {
+      // Exclude specified groups
+      activeGroups = activeGroups.filter(g => !matchedDomain.groups!.includes(g.name));
+    }
+  }
+
+  // If no active groups after filtering, return
+  if (activeGroups.length === 0) return;
 
   const mode = matchedDomain.mode;
   const phraseMap = new Map<string, {bgColor: string, textColor: string}>();

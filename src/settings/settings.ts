@@ -4,6 +4,7 @@ import JSON5 from 'json5';
 interface Group {
   id: string;
   name: string;
+  enabled: boolean;
   lightBgColor: string;
   lightTextColor: string;
   darkBgColor: string;
@@ -15,12 +16,14 @@ interface Domain {
   id: string;
   pattern: string;
   mode: 'light' | 'dark';
-  groupIds: string[];
+  groups?: string[];  // List of group names (optional, omit for "all enabled groups")
+  groupMode?: 'only' | 'except';  // Defaults to 'only' if groups specified
 }
 
 // Export format types (user-friendly, no IDs)
 interface ExportGroup {
   name: string;
+  enabled?: boolean;  // Optional for backwards compatibility, defaults to true
   lightBg: string;
   lightText: string;
   darkBg: string;
@@ -31,7 +34,8 @@ interface ExportGroup {
 interface ExportDomain {
   pattern: string;
   mode: 'light' | 'dark';
-  groups: string[]; // group names instead of IDs
+  groups?: string[];  // Optional: group names (omit for "all enabled groups")
+  groupMode?: 'only' | 'except';  // Optional: defaults to 'only' if groups specified
 }
 
 interface ExportData {
@@ -62,23 +66,37 @@ async function saveDomains(domains: Domain[]): Promise<void> {
 
 async function exportData(): Promise<string> {
   // Convert to export format (no IDs, name-based references)
-  const exportGroups: ExportGroup[] = groups.map(g => ({
-    name: g.name,
-    lightBg: g.lightBgColor,
-    lightText: g.lightTextColor,
-    darkBg: g.darkBgColor,
-    darkText: g.darkTextColor,
-    phrases: g.phrases,
-  }));
+  const exportGroups: ExportGroup[] = groups.map(g => {
+    const group: ExportGroup = {
+      name: g.name,
+      lightBg: g.lightBgColor,
+      lightText: g.lightTextColor,
+      darkBg: g.darkBgColor,
+      darkText: g.darkTextColor,
+      phrases: g.phrases,
+    };
+    // Only include enabled field if it's false (true is default, no need to clutter config)
+    if (!g.enabled) {
+      group.enabled = false;
+    }
+    return group;
+  });
 
-  // Build ID to name map for groups
-  const idToName = new Map(groups.map(g => [g.id, g.name]));
-
-  const exportDomains: ExportDomain[] = domains.map(d => ({
-    pattern: d.pattern,
-    mode: d.mode,
-    groups: d.groupIds.map(id => idToName.get(id) || id).filter(Boolean),
-  }));
+  const exportDomains: ExportDomain[] = domains.map(d => {
+    const domain: ExportDomain = {
+      pattern: d.pattern,
+      mode: d.mode,
+    };
+    // Only include groups/groupMode if they're specified (omit for "all groups")
+    if (d.groups && d.groups.length > 0) {
+      domain.groups = d.groups;
+      // Only include groupMode if it's not the default ('only')
+      if (d.groupMode && d.groupMode !== 'only') {
+        domain.groupMode = d.groupMode;
+      }
+    }
+    return domain;
+  });
 
   const data: ExportData = { groups: exportGroups, domains: exportDomains };
 
@@ -100,7 +118,6 @@ async function importData(jsonString: string): Promise<{ success: boolean; error
     }
 
     // Convert groups to internal format with generated IDs
-    const nameToId = new Map<string, string>();
     const newGroups: Group[] = [];
 
     for (const exportGroup of data.groups) {
@@ -112,17 +129,12 @@ async function importData(jsonString: string): Promise<{ success: boolean; error
         return { success: false, error: `Invalid group "${exportGroup.name}": missing color fields` };
       }
 
-      // Check for duplicate group names
-      if (nameToId.has(exportGroup.name)) {
-        return { success: false, error: `Duplicate group name: "${exportGroup.name}"` };
-      }
-
       const id = crypto.randomUUID();
-      nameToId.set(exportGroup.name, id);
 
       newGroups.push({
         id,
         name: exportGroup.name,
+        enabled: exportGroup.enabled !== false,  // Default to true if not specified
         lightBgColor: exportGroup.lightBg,
         lightTextColor: exportGroup.lightText,
         darkBgColor: exportGroup.darkBg,
@@ -136,29 +148,41 @@ async function importData(jsonString: string): Promise<{ success: boolean; error
 
     for (const exportDomain of data.domains) {
       // Validate domain
-      if (!exportDomain.pattern || !exportDomain.mode || !exportDomain.groups || !Array.isArray(exportDomain.groups)) {
+      if (!exportDomain.pattern || !exportDomain.mode) {
         return { success: false, error: `Invalid domain format: missing required fields (pattern: "${exportDomain.pattern || 'missing'}")` };
       }
       if (exportDomain.mode !== 'light' && exportDomain.mode !== 'dark') {
         return { success: false, error: `Invalid domain "${exportDomain.pattern}": mode must be "light" or "dark"` };
       }
 
-      // Convert group names to IDs
-      const groupIds: string[] = [];
-      for (const groupName of exportDomain.groups) {
-        const groupId = nameToId.get(groupName);
-        if (!groupId) {
-          return { success: false, error: `Domain "${exportDomain.pattern}" references unknown group: "${groupName}"` };
-        }
-        groupIds.push(groupId);
+      // Validate groupMode if specified
+      if (exportDomain.groupMode && exportDomain.groupMode !== 'only' && exportDomain.groupMode !== 'except') {
+        return { success: false, error: `Invalid domain "${exportDomain.pattern}": groupMode must be "only" or "except"` };
       }
 
-      newDomains.push({
+      // Validate group references if specified
+      if (exportDomain.groups && exportDomain.groups.length > 0) {
+        for (const groupName of exportDomain.groups) {
+          const groupExists = newGroups.some(g => g.name === groupName);
+          if (!groupExists) {
+            return { success: false, error: `Domain "${exportDomain.pattern}" references unknown group: "${groupName}"` };
+          }
+        }
+      }
+
+      const newDomain: Domain = {
         id: crypto.randomUUID(),
         pattern: exportDomain.pattern,
         mode: exportDomain.mode,
-        groupIds,
-      });
+      };
+
+      // Only include groups/groupMode if specified
+      if (exportDomain.groups && exportDomain.groups.length > 0) {
+        newDomain.groups = exportDomain.groups;
+        newDomain.groupMode = exportDomain.groupMode || 'only';  // Default to 'only'
+      }
+
+      newDomains.push(newDomain);
     }
 
     // If validation passes, save the data
@@ -184,50 +208,82 @@ let editingDomainId: string | null = null;
 // Migrate old data format to new format
 async function migrateData() {
   const rawData = await browserAPI.storage.local.get(['groups', 'domains']);
-  let needsSave = false;
+  let groupsNeedsSave = false;
+  let domainsNeedsSave = false;
 
-  // Migrate groups from old format (single 'color' field) to new format
+  // Migrate groups from old format to new format
   if (rawData.groups && rawData.groups.length > 0) {
     const migratedGroups = rawData.groups.map((g: any) => {
-      // Check if this is old format (has 'color' but not 'lightBgColor')
+      let needsMigration = false;
+      const migrated: any = { ...g };
+
+      // Old format: single 'color' field -> migrate to lightBgColor/darkBgColor
       if (g.color && !g.lightBgColor) {
-        needsSave = true;
-        return {
-          id: g.id,
-          name: g.name,
-          lightBgColor: g.color,
-          lightTextColor: '#000000',
-          darkBgColor: g.color,
-          darkTextColor: '#ffffff',
-          phrases: g.phrases,
-        };
+        needsMigration = true;
+        migrated.lightBgColor = g.color;
+        migrated.lightTextColor = '#000000';
+        migrated.darkBgColor = g.color;
+        migrated.darkTextColor = '#ffffff';
+        delete migrated.color;
       }
-      return g; // Already new format
+
+      // Add 'enabled' field if missing (default to true)
+      if (g.enabled === undefined) {
+        needsMigration = true;
+        migrated.enabled = true;
+      }
+
+      if (needsMigration) {
+        groupsNeedsSave = true;
+      }
+      return migrated;
     });
 
-    if (needsSave) {
+    if (groupsNeedsSave) {
       await saveGroups(migratedGroups);
     }
   }
 
-  // Migrate domains from old format (no 'mode' field) to new format
+  // Migrate domains from old format to new format
   if (rawData.domains && rawData.domains.length > 0) {
-    let domainNeedsSave = false;
+    const allGroups = await getGroups();
+    const idToName = new Map(allGroups.map((g: any) => [g.id, g.name]));
+
     const migratedDomains = rawData.domains.map((d: any) => {
-      // Check if this is old format (no 'mode' field)
+      let needsMigration = false;
+      const migrated: any = { ...d };
+
+      // Old format: no 'mode' field -> default to 'light'
       if (!d.mode) {
-        domainNeedsSave = true;
-        return {
-          id: d.id,
-          pattern: d.pattern,
-          mode: 'light' as const,
-          groupIds: d.groupIds,
-        };
+        needsMigration = true;
+        migrated.mode = 'light';
       }
-      return d; // Already new format
+
+      // Old format: 'groupIds' array -> migrate to 'groups' (names) + 'groupMode'
+      if (d.groupIds && Array.isArray(d.groupIds)) {
+        needsMigration = true;
+        // Convert IDs to names
+        const groupNames = d.groupIds
+          .map((id: string) => idToName.get(id))
+          .filter(Boolean);
+
+        // Only set groups if not all groups (let it default to "all enabled groups")
+        if (groupNames.length > 0 && groupNames.length < allGroups.length) {
+          migrated.groups = groupNames;
+          // Don't set groupMode, it will default to 'only'
+        }
+        // If all groups or no groups, don't set the groups field (use default "all enabled")
+
+        delete migrated.groupIds;
+      }
+
+      if (needsMigration) {
+        domainsNeedsSave = true;
+      }
+      return migrated;
     });
 
-    if (domainNeedsSave) {
+    if (domainsNeedsSave) {
       await saveDomains(migratedDomains);
     }
   }
@@ -249,8 +305,11 @@ function render() {
 function renderGroups() {
   const list = document.getElementById('groupsList')!;
   list.innerHTML = groups.map(g => `
-    <div>
-      <strong>${g.name}</strong><br>
+    <div style="${!g.enabled ? 'opacity: 0.5;' : ''}">
+      <label>
+        <input type="checkbox" class="toggle-group-enabled" data-id="${g.id}" ${g.enabled ? 'checked' : ''}>
+        <strong>${g.name}</strong> ${!g.enabled ? '(disabled)' : ''}
+      </label><br>
       Light: <span style="background: ${g.lightBgColor}; color: ${g.lightTextColor}; padding: 2px 8px;">Sample</span>
       Dark: <span style="background: ${g.darkBgColor}; color: ${g.darkTextColor}; padding: 2px 8px;">Sample</span>
       <button class="edit-group" data-id="${g.id}">Edit</button>
@@ -269,16 +328,18 @@ function renderGroups() {
 function renderDomains() {
   const list = document.getElementById('domainsList')!;
   list.innerHTML = domains.map(d => {
-    // Show "All groups" if all groups are assigned, otherwise list them
+    // Show groups display based on new schema
     let groupsDisplay;
-    if (d.groupIds.length === groups.length && groups.length > 0) {
-      groupsDisplay = 'All groups';
+    if (!d.groups || d.groups.length === 0) {
+      groupsDisplay = 'All enabled groups';
     } else {
-      const groupNames = d.groupIds
-        .map(id => groups.find(g => g.id === id)?.name)
-        .filter(Boolean)
-        .join(', ');
-      groupsDisplay = groupNames || 'No groups';
+      const groupMode = d.groupMode || 'only';
+      const groupsList = d.groups.join(', ');
+      if (groupMode === 'only') {
+        groupsDisplay = `Only: ${groupsList}`;
+      } else {
+        groupsDisplay = `All except: ${groupsList}`;
+      }
     }
 
     return `
@@ -300,18 +361,69 @@ function renderDomains() {
 function renderDomainGroupsSelection() {
   const container = document.getElementById('domainGroupsSelection')!;
   const editingDomain = editingDomainId ? domains.find(d => d.id === editingDomainId) : null;
-  container.innerHTML = groups.map(g => {
-    // Check all by default when adding new, otherwise check only assigned groups when editing
-    const isChecked = editingDomain
-      ? (editingDomain.groupIds.includes(g.id) ? 'checked' : '')
-      : 'checked';
-    return `
-      <label>
-        <input type="checkbox" value="${g.id}" class="domain-group-checkbox" ${isChecked}>
-        ${g.name}
-      </label>
-    `;
-  }).join('<br>');
+
+  // Determine group mode and selected groups
+  const hasGroups = editingDomain && editingDomain.groups && editingDomain.groups.length > 0;
+  const groupMode = hasGroups ? (editingDomain!.groupMode || 'only') : 'only';
+  const useAllGroups = !hasGroups;
+
+  container.innerHTML = `
+    <strong>Groups:</strong><br>
+    <label>
+      <input type="radio" name="domainGroupsMode" value="all" ${useAllGroups ? 'checked' : ''}>
+      Use all enabled groups
+    </label><br>
+    <label>
+      <input type="radio" name="domainGroupsMode" value="only" ${hasGroups && groupMode === 'only' ? 'checked' : ''}>
+      Use only these groups:
+    </label><br>
+    <div id="onlyGroupsList" style="margin-left: 20px; ${hasGroups && groupMode === 'only' ? '' : 'display: none;'}">
+      ${groups.map(g => {
+        const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'only';
+        return `
+          <label>
+            <input type="checkbox" value="${g.name}" class="only-group-checkbox" ${isChecked ? 'checked' : ''}>
+            ${g.name}
+          </label><br>
+        `;
+      }).join('')}
+    </div>
+    <label>
+      <input type="radio" name="domainGroupsMode" value="except" ${hasGroups && groupMode === 'except' ? 'checked' : ''}>
+      Use all except these groups:
+    </label><br>
+    <div id="exceptGroupsList" style="margin-left: 20px; ${hasGroups && groupMode === 'except' ? '' : 'display: none;'}">
+      ${groups.map(g => {
+        const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'except';
+        return `
+          <label>
+            <input type="checkbox" value="${g.name}" class="except-group-checkbox" ${isChecked ? 'checked' : ''}>
+            ${g.name}
+          </label><br>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  // Add event listeners to show/hide group lists based on selected mode
+  const radios = container.querySelectorAll<HTMLInputElement>('input[name="domainGroupsMode"]');
+  radios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      const onlyList = document.getElementById('onlyGroupsList')!;
+      const exceptList = document.getElementById('exceptGroupsList')!;
+
+      if (radio.value === 'all') {
+        onlyList.style.display = 'none';
+        exceptList.style.display = 'none';
+      } else if (radio.value === 'only') {
+        onlyList.style.display = 'block';
+        exceptList.style.display = 'none';
+      } else if (radio.value === 'except') {
+        onlyList.style.display = 'none';
+        exceptList.style.display = 'block';
+      }
+    });
+  });
 }
 
 document.getElementById('addGroup')!.addEventListener('click', async () => {
@@ -332,12 +444,13 @@ document.getElementById('addGroup')!.addEventListener('click', async () => {
   if (!name || phrases.length === 0) return;
 
   if (editingGroupId) {
-    // Update existing group
+    // Update existing group (preserve enabled state)
     const index = groups.findIndex(g => g.id === editingGroupId);
     if (index !== -1) {
       groups[index] = {
         id: editingGroupId,
         name,
+        enabled: groups[index].enabled,  // Preserve enabled state
         lightBgColor,
         lightTextColor,
         darkBgColor,
@@ -347,10 +460,11 @@ document.getElementById('addGroup')!.addEventListener('click', async () => {
     }
     editingGroupId = null;
   } else {
-    // Add new group
+    // Add new group (enabled by default)
     const newGroup: Group = {
       id: crypto.randomUUID(),
       name,
+      enabled: true,  // New groups are enabled by default
       lightBgColor,
       lightTextColor,
       darkBgColor,
@@ -380,29 +494,43 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
   const modeRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"]:checked');
   const mode = (modeRadio?.value || 'light') as 'light' | 'dark';
 
-  const checkboxes = document.querySelectorAll<HTMLInputElement>('.domain-group-checkbox:checked');
-  const groupIds = Array.from(checkboxes).map(cb => cb.value);
+  // Determine group selection mode
+  const groupsModeRadio = document.querySelector<HTMLInputElement>('input[name="domainGroupsMode"]:checked');
+  const groupsMode = groupsModeRadio?.value || 'all';
+
+  const newDomain: Domain = {
+    id: editingDomainId || crypto.randomUUID(),
+    pattern,
+    mode,
+  };
+
+  // Set groups and groupMode based on selection
+  if (groupsMode === 'only') {
+    const onlyCheckboxes = document.querySelectorAll<HTMLInputElement>('.only-group-checkbox:checked');
+    const selectedGroups = Array.from(onlyCheckboxes).map(cb => cb.value);
+    if (selectedGroups.length > 0) {
+      newDomain.groups = selectedGroups;
+      newDomain.groupMode = 'only';
+    }
+  } else if (groupsMode === 'except') {
+    const exceptCheckboxes = document.querySelectorAll<HTMLInputElement>('.except-group-checkbox:checked');
+    const selectedGroups = Array.from(exceptCheckboxes).map(cb => cb.value);
+    if (selectedGroups.length > 0) {
+      newDomain.groups = selectedGroups;
+      newDomain.groupMode = 'except';
+    }
+  }
+  // If groupsMode === 'all', don't set groups or groupMode (defaults to all enabled groups)
 
   if (editingDomainId) {
     // Update existing domain
     const index = domains.findIndex(d => d.id === editingDomainId);
     if (index !== -1) {
-      domains[index] = {
-        id: editingDomainId,
-        pattern,
-        mode,
-        groupIds,
-      };
+      domains[index] = newDomain;
     }
     editingDomainId = null;
   } else {
     // Add new domain
-    const newDomain: Domain = {
-      id: crypto.randomUUID(),
-      pattern,
-      mode,
-      groupIds,
-    };
     domains.push(newDomain);
   }
 
@@ -412,15 +540,26 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
   // Reset mode to light
   const lightRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"][value="light"]');
   if (lightRadio) lightRadio.checked = true;
-  checkboxes.forEach(cb => cb.checked = false);
   render();
 });
 
-// Event delegation for group buttons
+// Event delegation for group buttons and checkboxes
 document.getElementById('groupsList')!.addEventListener('click', async (e) => {
   const target = e.target as HTMLElement;
 
-  if (target.classList.contains('edit-group')) {
+  if (target.classList.contains('toggle-group-enabled')) {
+    // Handle enabled checkbox toggle
+    const checkbox = target as HTMLInputElement;
+    const id = checkbox.getAttribute('data-id');
+    if (!id) return;
+
+    const group = groups.find(g => g.id === id);
+    if (!group) return;
+
+    group.enabled = checkbox.checked;
+    await saveGroups(groups);
+    render();
+  } else if (target.classList.contains('edit-group')) {
     const id = target.getAttribute('data-id');
     if (!id) return;
 
@@ -515,9 +654,7 @@ document.getElementById('cancelDomain')!.addEventListener('click', () => {
   const lightRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"][value="light"]');
   if (lightRadio) lightRadio.checked = true;
 
-  const checkboxes = document.querySelectorAll<HTMLInputElement>('.domain-group-checkbox:checked');
-  checkboxes.forEach(cb => cb.checked = false);
-
+  // render() will reset the group selection UI to default state
   render();
 });
 
