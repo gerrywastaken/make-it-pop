@@ -29,7 +29,9 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "makeitpop@example.com",
-      "data_collection_permissions": {}
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
     }
   }
 }
