@@ -37,6 +37,58 @@ async function saveDomains(domains: Domain[]): Promise<void> {
   await browserAPI.storage.local.set({ domains });
 }
 
+async function exportData(): Promise<string> {
+  const data = { groups, domains };
+  return JSON.stringify(data, null, 2);
+}
+
+async function importData(jsonString: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const data = JSON.parse(jsonString) as { groups: Group[]; domains: Domain[] };
+
+    // Validate the structure
+    if (!data.groups || !Array.isArray(data.groups)) {
+      return { success: false, error: 'Invalid format: missing or invalid "groups" array' };
+    }
+    if (!data.domains || !Array.isArray(data.domains)) {
+      return { success: false, error: 'Invalid format: missing or invalid "domains" array' };
+    }
+
+    // Validate each group
+    for (const group of data.groups) {
+      if (!group.id || !group.name || !group.phrases || !Array.isArray(group.phrases)) {
+        return { success: false, error: 'Invalid group format: missing required fields' };
+      }
+      if (!group.lightBgColor || !group.lightTextColor || !group.darkBgColor || !group.darkTextColor) {
+        return { success: false, error: 'Invalid group format: missing color fields' };
+      }
+    }
+
+    // Validate each domain
+    for (const domain of data.domains) {
+      if (!domain.id || !domain.pattern || !domain.mode || !domain.groupIds || !Array.isArray(domain.groupIds)) {
+        return { success: false, error: 'Invalid domain format: missing required fields' };
+      }
+      if (domain.mode !== 'light' && domain.mode !== 'dark') {
+        return { success: false, error: 'Invalid domain mode: must be "light" or "dark"' };
+      }
+    }
+
+    // If validation passes, save the data
+    groups = data.groups;
+    domains = data.domains;
+    await saveGroups(groups);
+    await saveDomains(domains);
+
+    return { success: true };
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return { success: false, error: 'Invalid JSON format' };
+    }
+    return { success: false, error: String(error) };
+  }
+}
+
 let groups: Group[] = [];
 let domains: Domain[] = [];
 let editingGroupId: string | null = null;
@@ -380,6 +432,71 @@ document.getElementById('cancelDomain')!.addEventListener('click', () => {
   checkboxes.forEach(cb => cb.checked = false);
 
   render();
+});
+
+// Export data handler
+document.getElementById('exportData')!.addEventListener('click', async () => {
+  const jsonData = await exportData();
+  const blob = new Blob([jsonData], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+  a.download = `makeitpop-config-${date}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// Import data handler
+document.getElementById('importData')!.addEventListener('click', () => {
+  const fileInput = document.getElementById('importFile') as HTMLInputElement;
+  fileInput.click();
+});
+
+document.getElementById('importFile')!.addEventListener('change', async (e) => {
+  const fileInput = e.target as HTMLInputElement;
+  const statusDiv = document.getElementById('importStatus')!;
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = async (event) => {
+    const content = event.target?.result as string;
+    const result = await importData(content);
+
+    if (result.success) {
+      statusDiv.textContent = 'Configuration imported successfully!';
+      statusDiv.style.color = 'green';
+      render(); // Re-render to show imported data
+    } else {
+      statusDiv.textContent = `Import failed: ${result.error}`;
+      statusDiv.style.color = 'red';
+    }
+
+    // Clear status after 5 seconds
+    setTimeout(() => {
+      statusDiv.textContent = '';
+    }, 5000);
+  };
+
+  reader.onerror = () => {
+    statusDiv.textContent = 'Error reading file';
+    statusDiv.style.color = 'red';
+    setTimeout(() => {
+      statusDiv.textContent = '';
+    }, 5000);
+  };
+
+  reader.readAsText(file);
+
+  // Reset file input so the same file can be selected again
+  fileInput.value = '';
 });
 
 init();
