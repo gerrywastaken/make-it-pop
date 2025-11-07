@@ -45,6 +45,13 @@ interface ExportData {
 
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
+// HTML escaping helper to prevent XSS
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // Inline storage functions
 async function getGroups(): Promise<Group[]> {
   const data = await browserAPI.storage.local.get('groups');
@@ -307,14 +314,14 @@ function renderGroups() {
   list.innerHTML = groups.map(g => `
     <div style="${!g.enabled ? 'opacity: 0.5;' : ''}">
       <label>
-        <input type="checkbox" class="toggle-group-enabled" data-id="${g.id}" ${g.enabled ? 'checked' : ''}>
-        <strong>${g.name}</strong> ${!g.enabled ? '(disabled)' : ''}
+        <input type="checkbox" class="toggle-group-enabled" data-id="${escapeHtml(g.id)}" ${g.enabled ? 'checked' : ''}>
+        <strong>${escapeHtml(g.name)}</strong> ${!g.enabled ? '(disabled)' : ''}
       </label><br>
-      Light: <span style="background: ${g.lightBgColor}; color: ${g.lightTextColor}; padding: 2px 8px;">Sample</span>
-      Dark: <span style="background: ${g.darkBgColor}; color: ${g.darkTextColor}; padding: 2px 8px;">Sample</span>
-      <button class="edit-group" data-id="${g.id}">Edit</button>
-      <button class="delete-group" data-id="${g.id}">Delete</button>
-      <div>Phrases: ${g.phrases.join(', ')}</div>
+      Light: <span style="background: ${escapeHtml(g.lightBgColor)}; color: ${escapeHtml(g.lightTextColor)}; padding: 2px 8px;">Sample</span>
+      Dark: <span style="background: ${escapeHtml(g.darkBgColor)}; color: ${escapeHtml(g.darkTextColor)}; padding: 2px 8px;">Sample</span>
+      <button class="edit-group" data-id="${escapeHtml(g.id)}">Edit</button>
+      <button class="delete-group" data-id="${escapeHtml(g.id)}">Delete</button>
+      <div>Phrases: ${escapeHtml(g.phrases.join(', '))}</div>
     </div>
   `).join('');
 
@@ -334,7 +341,7 @@ function renderDomains() {
       groupsDisplay = 'All enabled groups';
     } else {
       const groupMode = d.groupMode || 'only';
-      const groupsList = d.groups.join(', ');
+      const groupsList = escapeHtml(d.groups.join(', '));
       if (groupMode === 'only') {
         groupsDisplay = `Only: ${groupsList}`;
       } else {
@@ -344,9 +351,9 @@ function renderDomains() {
 
     return `
       <div>
-        <strong>${d.pattern}</strong> (${d.mode} mode) - ${groupsDisplay}
-        <button class="edit-domain" data-id="${d.id}">Edit</button>
-        <button class="delete-domain" data-id="${d.id}">Delete</button>
+        <strong>${escapeHtml(d.pattern)}</strong> (${escapeHtml(d.mode)} mode) - ${groupsDisplay}
+        <button class="edit-domain" data-id="${escapeHtml(d.id)}">Edit</button>
+        <button class="delete-domain" data-id="${escapeHtml(d.id)}">Delete</button>
       </div>
     `;
   }).join('');
@@ -382,8 +389,8 @@ function renderDomainGroupsSelection() {
         const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'only';
         return `
           <label>
-            <input type="checkbox" value="${g.name}" class="only-group-checkbox" ${isChecked ? 'checked' : ''}>
-            ${g.name}
+            <input type="checkbox" value="${escapeHtml(g.name)}" class="only-group-checkbox" ${isChecked ? 'checked' : ''}>
+            ${escapeHtml(g.name)}
           </label><br>
         `;
       }).join('')}
@@ -397,8 +404,8 @@ function renderDomainGroupsSelection() {
         const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'except';
         return `
           <label>
-            <input type="checkbox" value="${g.name}" class="except-group-checkbox" ${isChecked ? 'checked' : ''}>
-            ${g.name}
+            <input type="checkbox" value="${escapeHtml(g.name)}" class="except-group-checkbox" ${isChecked ? 'checked' : ''}>
+            ${escapeHtml(g.name)}
           </label><br>
         `;
       }).join('')}
