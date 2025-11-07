@@ -214,6 +214,19 @@ interface StorageData {
 
 ## Development Notes
 
+### Package Management (IMPORTANT)
+**CRITICAL**: When adding, removing, or updating dependencies via `pnpm add`, `pnpm remove`, or `pnpm update`, you MUST commit both `package.json` AND `pnpm-lock.yaml` together. The CI environment uses `--frozen-lockfile` which will fail if these files are out of sync.
+
+**Steps when changing dependencies:**
+1. Run `pnpm add <package>` or `pnpm remove <package>`
+2. Verify both `package.json` and `pnpm-lock.yaml` are modified
+3. Commit BOTH files together: `git add package.json pnpm-lock.yaml`
+4. Push changes
+
+**If lockfile gets out of sync:**
+- Run `pnpm install` to update `pnpm-lock.yaml`
+- Commit the updated lockfile
+
 ### Longest Match Algorithm
 ```typescript
 // Pseudocode
