@@ -122,7 +122,10 @@ function highlightTextNode(node: Text, phraseMap: Map<string, {bgColor: string, 
     span.style.backgroundColor = match.bgColor;
     span.style.color = match.textColor;
     span.style.padding = '1px';
-    span.style.boxShadow = '1px 1px #e5e5e5';
+    // Use darker shadow for light mode, even darker for dark mode
+    span.style.boxShadow = globalMode === 'dark'
+      ? '1px 1px rgba(0, 0, 0, 0.5)'
+      : '1px 1px rgba(0, 0, 0, 0.2)';
     span.style.borderRadius = '3px';
     span.style.fontStyle = 'inherit';
     span.setAttribute('data-makeitpop-highlight', 'true');
@@ -209,6 +212,7 @@ function debounce(func: Function, wait: number): Function {
 
 // Global state for highlighting with concurrency control
 let globalPhraseMap: Map<string, {bgColor: string, textColor: string}> | null = null;
+let globalMode: 'light' | 'dark' = 'light'; // Track current mode for styling
 let shouldHighlight = false; // Flag indicating highlight needed
 let isHighlighting = false; // Lock to prevent concurrent execution
 let currentLoopNumber = 0; // Unique ID for each highlighting pass
@@ -275,6 +279,7 @@ async function highlightPage() {
   }
 
   globalPhraseMap = phraseMap;
+  globalMode = mode; // Store mode globally for styling
 
   // Initial highlight
   currentLoopNumber = Math.floor(Math.random() * 1000000000);
