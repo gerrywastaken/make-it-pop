@@ -52,12 +52,18 @@ function isWordChar(char: string): boolean {
 }
 
 // Check if match is at a word boundary
-function isWordBoundary(text: string, start: number, end: number): boolean {
+// Only enforces boundaries if the phrase itself starts/ends with word characters
+function isWordBoundary(text: string, start: number, end: number, phrase: string): boolean {
   const charBefore = start > 0 ? text[start - 1] : '';
   const charAfter = end < text.length ? text[end] : '';
 
-  const beforeOk = start === 0 || !isWordChar(charBefore);
-  const afterOk = end === text.length || !isWordChar(charAfter);
+  // Only check start boundary if phrase starts with a word character
+  const phraseStartsWithWord = isWordChar(phrase[0]);
+  const beforeOk = !phraseStartsWithWord || start === 0 || !isWordChar(charBefore);
+
+  // Only check end boundary if phrase ends with a word character
+  const phraseEndsWithWord = isWordChar(phrase[phrase.length - 1]);
+  const afterOk = !phraseEndsWithWord || end === text.length || !isWordChar(charAfter);
 
   return beforeOk && afterOk;
 }
@@ -75,7 +81,7 @@ function findMatches(text: string, phraseMap: Map<string, {bgColor: string, text
       if (lowerText.startsWith(lowerPhrase, position)) {
         const end = position + phrase.length;
         // Check word boundaries
-        if (isWordBoundary(text, position, end)) {
+        if (isWordBoundary(text, position, end, phrase)) {
           const colors = phraseMap.get(phrase)!;
           matches.push({
             start: position,
