@@ -329,20 +329,23 @@ async function init() {
 }
 
 function displayVersionInfo() {
-  // Display build-time version
+  // Display build-time version (includes commit hash)
   const buildVersionEl = document.getElementById('buildVersion')!;
   buildVersionEl.textContent = BUILD_VERSION_NAME;
-  buildVersionEl.title = `Built at: ${BUILD_TIME}`;
+  buildVersionEl.title = `Built at: ${BUILD_TIME}\nCommit: ${BUILD_COMMIT}`;
 
-  // Display runtime version from manifest
+  // Display runtime version from manifest (just semantic version)
   const manifest = browserAPI.runtime.getManifest();
   const runtimeVersionEl = document.getElementById('runtimeVersion')!;
-  const runtimeVersion = manifest.version_name || manifest.version;
+  const runtimeVersion = manifest.version;
   runtimeVersionEl.textContent = runtimeVersion;
 
-  // Check for mismatch
+  // Check for mismatch: compare base version numbers only
+  // Build version is like "1.0.0-5f9c794", runtime is like "1.0.0"
   const versionWarning = document.getElementById('versionWarning')!;
-  if (BUILD_VERSION_NAME !== runtimeVersion) {
+  const buildBaseVersion = BUILD_VERSION_NAME.split('-')[0]; // Extract "1.0.0" from "1.0.0-5f9c794"
+
+  if (buildBaseVersion !== runtimeVersion) {
     versionWarning.style.display = 'block';
   } else {
     versionWarning.style.display = 'none';

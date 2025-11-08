@@ -13,25 +13,27 @@ const versionTsContent = readFileSync(versionTsPath, 'utf-8');
 
 // Parse version info from version.ts (simple regex extraction)
 const versionMatch = versionTsContent.match(/BUILD_VERSION = '([^']+)'/);
-const versionNameMatch = versionTsContent.match(/BUILD_VERSION_NAME = '([^']+)'/);
 
-if (!versionMatch || !versionNameMatch) {
+if (!versionMatch) {
   throw new Error('Could not parse version.ts - run generate-version.js first');
 }
 
 const version = versionMatch[1];
-const versionName = versionNameMatch[1];
 
 // Read base manifest from public/
 const manifestPath = resolve(__dirname, '../public/manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
 
-// Inject version info
+// Inject version info (only the numeric version, not version_name)
+// version_name causes Firefox warnings since it's Chrome-specific
+// Build version with commit hash is shown in settings page instead
 manifest.version = version;
-manifest.version_name = versionName;
+
+// Remove version_name if it exists (shouldn't, but clean up just in case)
+delete manifest.version_name;
 
 // Write to dist/
 const outputPath = resolve(__dirname, '../dist/manifest.json');
 writeFileSync(outputPath, JSON.stringify(manifest, null, 2));
 
-console.log(`✓ Injected manifest version: ${versionName}`);
+console.log(`✓ Injected manifest version: ${version}`);
