@@ -1,36 +1,37 @@
 #!/usr/bin/env node
 
 import { readFileSync, writeFileSync } from 'fs';
-import { execSync } from 'child_process';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Get git commit hash
-let gitHash = 'unknown';
-try {
-  gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
-} catch (error) {
-  console.warn('Warning: Could not get git commit hash:', error.message);
+// Read version info from generated version.ts
+const versionTsPath = resolve(__dirname, '../src/version.ts');
+const versionTsContent = readFileSync(versionTsPath, 'utf-8');
+
+// Parse version info from version.ts (simple regex extraction)
+const versionMatch = versionTsContent.match(/BUILD_VERSION = '([^']+)'/);
+const versionNameMatch = versionTsContent.match(/BUILD_VERSION_NAME = '([^']+)'/);
+
+if (!versionMatch || !versionNameMatch) {
+  throw new Error('Could not parse version.ts - run generate-version.js first');
 }
+
+const version = versionMatch[1];
+const versionName = versionNameMatch[1];
 
 // Read base manifest from public/
 const manifestPath = resolve(__dirname, '../public/manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
 
-// Read version from package.json
-const packageJsonPath = resolve(__dirname, '../package.json');
-const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-const baseVersion = packageJson.version;
-
-// Inject version_name with git hash
-manifest.version = baseVersion;
-manifest.version_name = `${baseVersion}-${gitHash}`;
+// Inject version info
+manifest.version = version;
+manifest.version_name = versionName;
 
 // Write to dist/
 const outputPath = resolve(__dirname, '../dist/manifest.json');
 writeFileSync(outputPath, JSON.stringify(manifest, null, 2));
 
-console.log(`✓ Injected version: ${manifest.version_name}`);
+console.log(`✓ Injected manifest version: ${versionName}`);

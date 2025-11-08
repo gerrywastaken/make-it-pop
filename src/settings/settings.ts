@@ -1,4 +1,5 @@
 import JSON5 from 'json5';
+import { BUILD_VERSION_NAME, BUILD_COMMIT, BUILD_TIME } from '../version';
 
 // Inline types
 interface Group {
@@ -324,6 +325,28 @@ async function init() {
   groups = await getGroups();
   domains = await getDomains();
   render();
+  displayVersionInfo();
+}
+
+function displayVersionInfo() {
+  // Display build-time version
+  const buildVersionEl = document.getElementById('buildVersion')!;
+  buildVersionEl.textContent = BUILD_VERSION_NAME;
+  buildVersionEl.title = `Built at: ${BUILD_TIME}`;
+
+  // Display runtime version from manifest
+  const manifest = browserAPI.runtime.getManifest();
+  const runtimeVersionEl = document.getElementById('runtimeVersion')!;
+  const runtimeVersion = manifest.version_name || manifest.version;
+  runtimeVersionEl.textContent = runtimeVersion;
+
+  // Check for mismatch
+  const versionWarning = document.getElementById('versionWarning')!;
+  if (BUILD_VERSION_NAME !== runtimeVersion) {
+    versionWarning.style.display = 'block';
+  } else {
+    versionWarning.style.display = 'none';
+  }
 }
 
 function render() {
