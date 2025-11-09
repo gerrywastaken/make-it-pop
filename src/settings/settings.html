@@ -27,7 +27,11 @@
 
   <h2>Domains</h2>
   <div>
-    <input type="text" id="domainPattern" placeholder="Domain pattern (e.g., *.linkedin.com)"><br>
+    <input type="text" id="domainPattern" placeholder="Domain (e.g., linkedin.com)"><br>
+    <strong>Match:</strong>
+    <label><input type="radio" name="domainMatchMode" value="domain-and-www" checked> Domain + www</label>
+    <label><input type="radio" name="domainMatchMode" value="all-subdomains"> All subdomains</label>
+    <label><input type="radio" name="domainMatchMode" value="exact"> Exact match</label><br>
     <strong>Mode:</strong>
     <label><input type="radio" name="domainMode" value="light" checked> Light</label>
     <label><input type="radio" name="domainMode" value="dark"> Dark</label><br>

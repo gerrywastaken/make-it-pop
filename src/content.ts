@@ -12,7 +12,8 @@ interface Group {
 
 interface Domain {
   id: string;
-  pattern: string;
+  domain: string;  // Just the domain without wildcards (e.g., "linkedin.com")
+  matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';  // How to match the domain
   mode: 'light' | 'dark';
   groups?: string[];  // List of group names (optional, omit for "all enabled groups")
   groupMode?: 'only' | 'except';  // Defaults to 'only' if groups specified
@@ -31,12 +32,19 @@ async function getDomains(): Promise<Domain[]> {
   return data.domains || [];
 }
 
-function matchesDomain(pattern: string, hostname: string): boolean {
-  if (pattern.startsWith('*.')) {
-    const baseDomain = pattern.slice(2);
-    return hostname === baseDomain || hostname.endsWith('.' + baseDomain);
+function matchesDomain(domainConfig: Domain, hostname: string): boolean {
+  const { domain, matchMode } = domainConfig;
+
+  switch (matchMode) {
+    case 'domain-and-www':
+      return hostname === domain || hostname === `www.${domain}`;
+    case 'all-subdomains':
+      return hostname === domain || hostname.endsWith(`.${domain}`);
+    case 'exact':
+      return hostname === domain;
+    default:
+      return false;
   }
-  return pattern === hostname;
 }
 
 interface Match {
@@ -248,7 +256,7 @@ async function highlightPage() {
   const hostname = window.location.hostname;
   const domains = await getDomains();
 
-  const matchedDomain = domains.find(d => matchesDomain(d.pattern, hostname));
+  const matchedDomain = domains.find(d => matchesDomain(d, hostname));
   if (!matchedDomain) return;
 
   const allGroups = await getGroups();

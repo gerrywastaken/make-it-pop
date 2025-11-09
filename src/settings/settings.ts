@@ -15,7 +15,8 @@ interface Group {
 
 interface Domain {
   id: string;
-  pattern: string;
+  domain: string;  // Just the domain without wildcards (e.g., "linkedin.com")
+  matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';  // How to match the domain
   mode: 'light' | 'dark';
   groups?: string[];  // List of group names (optional, omit for "all enabled groups")
   groupMode?: 'only' | 'except';  // Defaults to 'only' if groups specified
@@ -33,7 +34,8 @@ interface ExportGroup {
 }
 
 interface ExportDomain {
-  pattern: string;
+  domain: string;
+  matchMode?: 'domain-and-www' | 'all-subdomains' | 'exact';  // Optional: defaults to 'domain-and-www'
   mode: 'light' | 'dark';
   groups?: string[];  // Optional: group names (omit for "all enabled groups")
   groupMode?: 'only' | 'except';  // Optional: defaults to 'only' if groups specified
@@ -115,9 +117,13 @@ async function exportData(): Promise<string> {
 
   const exportDomains: ExportDomain[] = domains.map(d => {
     const domain: ExportDomain = {
-      pattern: d.pattern,
+      domain: d.domain,
       mode: d.mode,
     };
+    // Only include matchMode if it's not the default ('domain-and-www')
+    if (d.matchMode && d.matchMode !== 'domain-and-www') {
+      domain.matchMode = d.matchMode;
+    }
     // Only include groups/groupMode if they're specified (omit for "all groups")
     if (d.groups && d.groups.length > 0) {
       domain.groups = d.groups;
@@ -178,17 +184,28 @@ async function importData(jsonString: string): Promise<{ success: boolean; error
     const newDomains: Domain[] = [];
 
     for (const exportDomain of data.domains) {
+      // Handle backward compatibility: accept old 'pattern' field
+      const domainField = exportDomain.domain || (exportDomain as any).pattern;
+
       // Validate domain
-      if (!exportDomain.pattern || !exportDomain.mode) {
-        return { success: false, error: `Invalid domain format: missing required fields (pattern: "${exportDomain.pattern || 'missing'}")` };
+      if (!domainField || !exportDomain.mode) {
+        return { success: false, error: `Invalid domain format: missing required fields (domain: "${domainField || 'missing'}")` };
       }
       if (exportDomain.mode !== 'light' && exportDomain.mode !== 'dark') {
-        return { success: false, error: `Invalid domain "${exportDomain.pattern}": mode must be "light" or "dark"` };
+        return { success: false, error: `Invalid domain "${domainField}": mode must be "light" or "dark"` };
+      }
+
+      // Validate matchMode if specified
+      if (exportDomain.matchMode &&
+          exportDomain.matchMode !== 'domain-and-www' &&
+          exportDomain.matchMode !== 'all-subdomains' &&
+          exportDomain.matchMode !== 'exact') {
+        return { success: false, error: `Invalid domain "${domainField}": matchMode must be "domain-and-www", "all-subdomains", or "exact"` };
       }
 
       // Validate groupMode if specified
       if (exportDomain.groupMode && exportDomain.groupMode !== 'only' && exportDomain.groupMode !== 'except') {
-        return { success: false, error: `Invalid domain "${exportDomain.pattern}": groupMode must be "only" or "except"` };
+        return { success: false, error: `Invalid domain "${domainField}": groupMode must be "only" or "except"` };
       }
 
       // Validate group references if specified
@@ -196,14 +213,35 @@ async function importData(jsonString: string): Promise<{ success: boolean; error
         for (const groupName of exportDomain.groups) {
           const groupExists = newGroups.some(g => g.name === groupName);
           if (!groupExists) {
-            return { success: false, error: `Domain "${exportDomain.pattern}" references unknown group: "${groupName}"` };
+            return { success: false, error: `Domain "${domainField}" references unknown group: "${groupName}"` };
           }
+        }
+      }
+
+      // Convert old 'pattern' format to new 'domain' + 'matchMode' if needed
+      let domain: string;
+      let matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';
+
+      if (exportDomain.domain) {
+        // New format
+        domain = exportDomain.domain;
+        matchMode = exportDomain.matchMode || 'domain-and-www';
+      } else {
+        // Old format: convert pattern to domain + matchMode
+        const pattern = (exportDomain as any).pattern;
+        if (pattern.startsWith('*.')) {
+          domain = pattern.slice(2);
+          matchMode = 'all-subdomains';
+        } else {
+          domain = pattern;
+          matchMode = 'domain-and-www';
         }
       }
 
       const newDomain: Domain = {
         id: crypto.randomUUID(),
-        pattern: exportDomain.pattern,
+        domain,
+        matchMode,
         mode: exportDomain.mode,
       };
 
@@ -283,6 +321,27 @@ async function migrateData() {
     const migratedDomains = rawData.domains.map((d: any) => {
       let needsMigration = false;
       const migrated: any = { ...d };
+
+      // Old format: 'pattern' field -> migrate to 'domain' + 'matchMode'
+      if (d.pattern && !d.domain) {
+        needsMigration = true;
+        if (d.pattern.startsWith('*.')) {
+          // Old wildcard pattern -> all-subdomains mode
+          migrated.domain = d.pattern.slice(2);  // Remove '*.'
+          migrated.matchMode = 'all-subdomains';
+        } else {
+          // Old plain domain -> domain-and-www mode (new default)
+          migrated.domain = d.pattern;
+          migrated.matchMode = 'domain-and-www';
+        }
+        delete migrated.pattern;
+      }
+
+      // Add matchMode if missing (new field, default to 'domain-and-www')
+      if (!d.matchMode && d.domain) {
+        needsMigration = true;
+        migrated.matchMode = 'domain-and-www';
+      }
 
       // Old format: no 'mode' field -> default to 'light'
       if (!d.mode) {
@@ -451,9 +510,16 @@ function renderDomains() {
   domains.forEach(d => {
     const container = createElement('div');
 
-    // Pattern (strong)
-    container.appendChild(createElement('strong', { textContent: d.pattern }));
-    container.appendChild(createText(' ('));
+    // Domain (strong)
+    container.appendChild(createElement('strong', { textContent: d.domain }));
+    container.appendChild(createText(' ['));
+
+    // Match mode display
+    const matchModeDisplay = d.matchMode === 'domain-and-www' ? 'Domain + www' :
+                             d.matchMode === 'all-subdomains' ? 'All subdomains' :
+                             'Exact';
+    container.appendChild(createText(matchModeDisplay));
+    container.appendChild(createText('] ('));
     container.appendChild(createText(d.mode));
     container.appendChild(createText(' mode) - '));
 
@@ -697,6 +763,9 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
 
   if (!pattern) return;
 
+  const matchModeRadio = document.querySelector<HTMLInputElement>('input[name="domainMatchMode"]:checked');
+  const matchMode = (matchModeRadio?.value || 'domain-and-www') as 'domain-and-www' | 'all-subdomains' | 'exact';
+
   const modeRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"]:checked');
   const mode = (modeRadio?.value || 'light') as 'light' | 'dark';
 
@@ -706,7 +775,8 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
 
   const newDomain: Domain = {
     id: editingDomainId || crypto.randomUUID(),
-    pattern,
+    domain: pattern,
+    matchMode,
     mode,
   };
 
@@ -743,6 +813,9 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
   await saveDomains(domains);
 
   patternInput.value = '';
+  // Reset match mode to domain-and-www
+  const defaultMatchModeRadio = document.querySelector<HTMLInputElement>('input[name="domainMatchMode"][value="domain-and-www"]');
+  if (defaultMatchModeRadio) defaultMatchModeRadio.checked = true;
   // Reset mode to light
   const lightRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"][value="light"]');
   if (lightRadio) lightRadio.checked = true;
@@ -813,7 +886,11 @@ document.getElementById('domainsList')!.addEventListener('click', async (e) => {
     editingDomainId = id;
 
     const patternInput = document.getElementById('domainPattern') as HTMLInputElement;
-    patternInput.value = domain.pattern;
+    patternInput.value = domain.domain;
+
+    // Set the match mode radio button
+    const matchModeRadio = document.querySelector<HTMLInputElement>(`input[name="domainMatchMode"][value="${domain.matchMode}"]`);
+    if (matchModeRadio) matchModeRadio.checked = true;
 
     // Set the mode radio button
     const modeRadio = document.querySelector<HTMLInputElement>(`input[name="domainMode"][value="${domain.mode}"]`);
@@ -855,6 +932,10 @@ document.getElementById('cancelDomain')!.addEventListener('click', () => {
 
   const patternInput = document.getElementById('domainPattern') as HTMLInputElement;
   patternInput.value = '';
+
+  // Reset match mode to domain-and-www
+  const defaultMatchModeRadio = document.querySelector<HTMLInputElement>('input[name="domainMatchMode"][value="domain-and-www"]');
+  if (defaultMatchModeRadio) defaultMatchModeRadio.checked = true;
 
   // Reset mode to light
   const lightRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"][value="light"]');
