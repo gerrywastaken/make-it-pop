@@ -23,6 +23,7 @@ interface Domain {
 let currentDomain: string = '';
 let groups: Group[] = [];
 let domains: Domain[] = [];
+let currentDomainConfig: Domain | null = null;
 
 // Get current tab's domain
 async function getCurrentTabDomain(): Promise<string> {
@@ -38,6 +39,21 @@ async function getCurrentTabDomain(): Promise<string> {
   return '';
 }
 
+// Find domain configuration for current domain
+function findDomainConfig(): Domain | null {
+  if (!currentDomain) return null;
+
+  return domains.find(d => {
+    if (d.matchMode === 'exact') {
+      return d.domain === currentDomain;
+    } else if (d.matchMode === 'all-subdomains') {
+      return currentDomain === d.domain || currentDomain.endsWith('.' + d.domain);
+    } else { // domain-and-www
+      return currentDomain === d.domain || currentDomain === 'www.' + d.domain;
+    }
+  }) || null;
+}
+
 // Load all data
 async function loadData() {
   currentDomain = await getCurrentTabDomain();
@@ -47,11 +63,13 @@ async function loadData() {
   groups = data.groups || [];
   domains = data.domains || [];
 
+  currentDomainConfig = findDomainConfig();
+
   // Update UI
   updateHeader(enabled);
   updateStats();
-  renderGroupToggles();
-  updateAddDomainButton();
+  renderDomainConfig();
+  updateButtons();
 }
 
 // Update header with current domain
@@ -80,195 +98,248 @@ function updateStats() {
   document.getElementById('domainsCount')!.textContent = String(domainsCount);
 }
 
-// Get groups active for current domain
-function getGroupsForCurrentDomain(): { group: Group; isActive: boolean }[] {
-  if (!currentDomain) return [];
-
-  // Find domain configuration for current domain
-  const domainConfig = domains.find(d => {
-    if (d.matchMode === 'exact') {
-      return d.domain === currentDomain;
-    } else if (d.matchMode === 'all-subdomains') {
-      return currentDomain === d.domain || currentDomain.endsWith('.' + d.domain);
-    } else { // domain-and-www
-      return currentDomain === d.domain || currentDomain === 'www.' + d.domain;
-    }
-  });
-
-  if (!domainConfig) {
-    // Domain not configured - no groups apply
-    return [];
-  }
-
-  // Get enabled groups
-  const enabledGroups = groups.filter(g => g.enabled);
-
-  // Apply domain's group filtering
-  let activeGroups: Group[];
-  if (!domainConfig.groups || domainConfig.groups.length === 0) {
-    // Use all enabled groups
-    activeGroups = enabledGroups;
-  } else if (domainConfig.groupMode === 'only') {
-    // Only specified groups
-    activeGroups = enabledGroups.filter(g => domainConfig.groups!.includes(g.name));
-  } else {
-    // All except specified groups
-    activeGroups = enabledGroups.filter(g => !domainConfig.groups!.includes(g.name));
-  }
-
-  // Return all enabled groups with active status
-  return enabledGroups.map(g => ({
-    group: g,
-    isActive: activeGroups.some(ag => ag.id === g.id)
-  }));
-}
-
-// Render group toggles for current domain
-function renderGroupToggles() {
-  const container = document.getElementById('groupToggles')!;
-  const section = document.getElementById('groupTogglesSection')!;
+// Render domain configuration UI
+function renderDomainConfig() {
+  const container = document.getElementById('domainConfig')!;
+  const section = document.getElementById('domainConfigSection')!;
   container.innerHTML = '';
 
-  if (!currentDomain) {
-    section.style.display = 'none';
-    return;
-  }
-
-  // Find domain configuration
-  const domainConfig = domains.find(d => {
-    if (d.matchMode === 'exact') {
-      return d.domain === currentDomain;
-    } else if (d.matchMode === 'all-subdomains') {
-      return currentDomain === d.domain || currentDomain.endsWith('.' + d.domain);
-    } else { // domain-and-www
-      return currentDomain === d.domain || currentDomain === 'www.' + d.domain;
-    }
-  });
-
-  if (!domainConfig) {
+  if (!currentDomain || !currentDomainConfig) {
     section.style.display = 'none';
     return;
   }
 
   section.style.display = 'block';
 
-  const groupsForDomain = getGroupsForCurrentDomain();
+  // Mode selection
+  const modeSelection = document.createElement('div');
+  modeSelection.className = 'mode-selection';
 
-  if (groupsForDomain.length === 0) {
-    container.innerHTML = '<div class="empty-state">No groups enabled</div>';
-    return;
-  }
+  const modeLabel = document.createElement('label');
+  modeLabel.textContent = 'Display Mode:';
+  modeSelection.appendChild(modeLabel);
 
-  groupsForDomain.forEach(({ group, isActive }) => {
-    const toggleContainer = document.createElement('div');
-    toggleContainer.className = 'toggle-container';
-    if (!isActive) {
-      toggleContainer.classList.add('disabled');
-    }
+  const modeButtons = document.createElement('div');
+  modeButtons.className = 'mode-buttons';
 
-    // Label with color badge
-    const label = document.createElement('span');
-    label.className = 'toggle-label';
+  ['light', 'dark'].forEach(mode => {
+    const label = document.createElement('label');
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'mode';
+    radio.value = mode;
+    radio.checked = currentDomainConfig!.mode === mode;
+    radio.addEventListener('change', handleModeChange);
 
-    const badge = document.createElement('span');
-    badge.className = 'group-badge';
-    badge.style.backgroundColor = group.lightBgColor;
+    const span = document.createElement('span');
+    span.textContent = mode === 'light' ? 'Light' : 'Dark';
 
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = group.name;
-
-    label.appendChild(badge);
-    label.appendChild(nameSpan);
-
-    // Toggle switch
-    const switchLabel = document.createElement('label');
-    switchLabel.className = 'toggle-switch';
-
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.checked = isActive;
-    input.dataset.groupName = group.name;
-
-    const slider = document.createElement('span');
-    slider.className = 'toggle-slider';
-
-    switchLabel.appendChild(input);
-    switchLabel.appendChild(slider);
-
-    toggleContainer.appendChild(label);
-    toggleContainer.appendChild(switchLabel);
-    container.appendChild(toggleContainer);
-
-    // Event listener for toggle - updates domain config
-    input.addEventListener('change', async () => {
-      if (!domainConfig) return;
-
-      const groupName = group.name;
-      let newGroups = domainConfig.groups ? [...domainConfig.groups] : [];
-      const currentMode = domainConfig.groupMode || 'only';
-
-      if (currentMode === 'only') {
-        // In "only" mode - add/remove from the list
-        if (input.checked) {
-          if (!newGroups.includes(groupName)) {
-            newGroups.push(groupName);
-          }
-        } else {
-          newGroups = newGroups.filter(n => n !== groupName);
-        }
-      } else {
-        // In "except" mode - remove/add from exceptions
-        if (input.checked) {
-          newGroups = newGroups.filter(n => n !== groupName);
-        } else {
-          if (!newGroups.includes(groupName)) {
-            newGroups.push(groupName);
-          }
-        }
-      }
-
-      // Update domain config
-      const domainIndex = domains.findIndex(d => d.id === domainConfig.id);
-      if (domainIndex !== -1) {
-        if (newGroups.length === 0) {
-          // No specific groups - use all
-          delete domains[domainIndex].groups;
-          delete domains[domainIndex].groupMode;
-        } else {
-          domains[domainIndex].groups = newGroups;
-          domains[domainIndex].groupMode = currentMode;
-        }
-        await browserAPI.storage.local.set({ domains });
-
-        // Update UI
-        toggleContainer.classList.toggle('disabled', !input.checked);
-
-        // Reload current tab
-        reloadCurrentTab();
-      }
-    });
+    label.appendChild(radio);
+    label.appendChild(span);
+    modeButtons.appendChild(label);
   });
+
+  modeSelection.appendChild(modeButtons);
+  container.appendChild(modeSelection);
+
+  // Group selection
+  const groupSelection = document.createElement('div');
+  groupSelection.className = 'group-selection';
+
+  const title = document.createElement('div');
+  title.className = 'group-selection-title';
+  title.textContent = 'Which groups are active?';
+  groupSelection.appendChild(title);
+
+  const enabledGroups = groups.filter(g => g.enabled);
+  const hasGroups = currentDomainConfig.groups && currentDomainConfig.groups.length > 0;
+  const groupMode = hasGroups ? (currentDomainConfig.groupMode || 'only') : 'all';
+
+  // Option 1: All enabled groups
+  const allRadioGroup = document.createElement('div');
+  allRadioGroup.className = 'radio-group';
+  const allLabel = document.createElement('label');
+  const allRadio = document.createElement('input');
+  allRadio.type = 'radio';
+  allRadio.name = 'grouping';
+  allRadio.value = 'all';
+  allRadio.checked = groupMode === 'all';
+  allRadio.addEventListener('change', handleGroupingChange);
+  allLabel.appendChild(allRadio);
+  allLabel.appendChild(document.createTextNode(' All enabled groups'));
+  allRadioGroup.appendChild(allLabel);
+  groupSelection.appendChild(allRadioGroup);
+
+  // Option 2: Only these groups
+  const onlyRadioGroup = document.createElement('div');
+  onlyRadioGroup.className = 'radio-group';
+  const onlyLabel = document.createElement('label');
+  const onlyRadio = document.createElement('input');
+  onlyRadio.type = 'radio';
+  onlyRadio.name = 'grouping';
+  onlyRadio.value = 'only';
+  onlyRadio.checked = hasGroups && groupMode === 'only';
+  onlyRadio.addEventListener('change', handleGroupingChange);
+  onlyLabel.appendChild(onlyRadio);
+  onlyLabel.appendChild(document.createTextNode(' Only these groups:'));
+  onlyRadioGroup.appendChild(onlyLabel);
+
+  const onlyCheckboxList = document.createElement('div');
+  onlyCheckboxList.className = 'checkbox-list' + (hasGroups && groupMode === 'only' ? ' visible' : '');
+  onlyCheckboxList.id = 'only-list';
+
+  enabledGroups.forEach(g => {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = g.name;
+    checkbox.className = 'only-checkbox';
+    checkbox.checked = hasGroups && groupMode === 'only' && currentDomainConfig!.groups!.includes(g.name);
+    checkbox.addEventListener('change', handleGroupCheckboxChange);
+
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(' ' + g.name));
+    onlyCheckboxList.appendChild(label);
+  });
+
+  onlyRadioGroup.appendChild(onlyCheckboxList);
+  groupSelection.appendChild(onlyRadioGroup);
+
+  // Option 3: All except these groups
+  const exceptRadioGroup = document.createElement('div');
+  exceptRadioGroup.className = 'radio-group';
+  const exceptLabel = document.createElement('label');
+  const exceptRadio = document.createElement('input');
+  exceptRadio.type = 'radio';
+  exceptRadio.name = 'grouping';
+  exceptRadio.value = 'except';
+  exceptRadio.checked = hasGroups && groupMode === 'except';
+  exceptRadio.addEventListener('change', handleGroupingChange);
+  exceptLabel.appendChild(exceptRadio);
+  exceptLabel.appendChild(document.createTextNode(' All except these groups:'));
+  exceptRadioGroup.appendChild(exceptLabel);
+
+  const exceptCheckboxList = document.createElement('div');
+  exceptCheckboxList.className = 'checkbox-list' + (hasGroups && groupMode === 'except' ? ' visible' : '');
+  exceptCheckboxList.id = 'except-list';
+
+  enabledGroups.forEach(g => {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = g.name;
+    checkbox.className = 'except-checkbox';
+    checkbox.checked = hasGroups && groupMode === 'except' && currentDomainConfig!.groups!.includes(g.name);
+    checkbox.addEventListener('change', handleGroupCheckboxChange);
+
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(' ' + g.name));
+    exceptCheckboxList.appendChild(label);
+  });
+
+  exceptRadioGroup.appendChild(exceptCheckboxList);
+  groupSelection.appendChild(exceptRadioGroup);
+
+  container.appendChild(groupSelection);
 }
 
-// Update "Add This Domain" button
-function updateAddDomainButton() {
+// Handle mode change
+async function handleModeChange(e: Event) {
+  const radio = e.target as HTMLInputElement;
+  if (!currentDomainConfig) return;
+
+  currentDomainConfig.mode = radio.value as 'light' | 'dark';
+  await saveDomainConfig();
+}
+
+// Handle grouping mode change
+function handleGroupingChange() {
+  const onlyList = document.getElementById('only-list')!;
+  const exceptList = document.getElementById('except-list')!;
+
+  const selectedRadio = document.querySelector('input[name="grouping"]:checked') as HTMLInputElement;
+  const value = selectedRadio?.value;
+
+  onlyList.classList.toggle('visible', value === 'only');
+  exceptList.classList.toggle('visible', value === 'except');
+
+  // Save the change
+  handleGroupCheckboxChange();
+}
+
+// Handle group checkbox change
+async function handleGroupCheckboxChange() {
+  if (!currentDomainConfig) return;
+
+  const selectedRadio = document.querySelector('input[name="grouping"]:checked') as HTMLInputElement;
+  const groupingMode = selectedRadio?.value || 'all';
+
+  if (groupingMode === 'all') {
+    // Clear groups config - use all enabled groups
+    delete currentDomainConfig.groups;
+    delete currentDomainConfig.groupMode;
+  } else if (groupingMode === 'only') {
+    // Get checked groups from only list
+    const onlyCheckboxes = document.querySelectorAll('.only-checkbox:checked') as NodeListOf<HTMLInputElement>;
+    const selectedGroups = Array.from(onlyCheckboxes).map(cb => cb.value);
+
+    if (selectedGroups.length > 0) {
+      currentDomainConfig.groups = selectedGroups;
+      currentDomainConfig.groupMode = 'only';
+    } else {
+      delete currentDomainConfig.groups;
+      delete currentDomainConfig.groupMode;
+    }
+  } else if (groupingMode === 'except') {
+    // Get checked groups from except list
+    const exceptCheckboxes = document.querySelectorAll('.except-checkbox:checked') as NodeListOf<HTMLInputElement>;
+    const selectedGroups = Array.from(exceptCheckboxes).map(cb => cb.value);
+
+    if (selectedGroups.length > 0) {
+      currentDomainConfig.groups = selectedGroups;
+      currentDomainConfig.groupMode = 'except';
+    } else {
+      delete currentDomainConfig.groups;
+      delete currentDomainConfig.groupMode;
+    }
+  }
+
+  await saveDomainConfig();
+}
+
+// Save domain configuration
+async function saveDomainConfig() {
+  if (!currentDomainConfig) return;
+
+  const domainIndex = domains.findIndex(d => d.id === currentDomainConfig!.id);
+  if (domainIndex !== -1) {
+    domains[domainIndex] = currentDomainConfig;
+    await browserAPI.storage.local.set({ domains });
+    reloadCurrentTab();
+  }
+}
+
+// Update buttons based on domain state
+function updateButtons() {
   const addButton = document.getElementById('addDomain') as HTMLButtonElement;
+  const removeButton = document.getElementById('removeDomain') as HTMLButtonElement;
 
   if (!currentDomain) {
     addButton.disabled = true;
     addButton.textContent = '+ Add This Domain';
+    removeButton.style.display = 'none';
     return;
   }
 
-  // Check if domain already exists
-  const domainExists = domains.some(d => d.domain === currentDomain);
-
-  if (domainExists) {
-    addButton.textContent = '✓ Domain Already Added';
-    addButton.disabled = true;
+  if (currentDomainConfig) {
+    addButton.style.display = 'none';
+    removeButton.style.display = 'block';
+    removeButton.textContent = `Remove ${currentDomain}`;
   } else {
+    addButton.style.display = 'block';
     addButton.textContent = `+ Add ${currentDomain}`;
     addButton.disabled = false;
+    removeButton.style.display = 'none';
   }
 }
 
@@ -290,9 +361,7 @@ document.getElementById('enableToggle')!.addEventListener('change', async (e) =>
 
 // Event: Add This Domain button
 document.getElementById('addDomain')!.addEventListener('click', async () => {
-  if (!currentDomain || domains.some(d => d.domain === currentDomain)) {
-    return;
-  }
+  if (!currentDomain) return;
 
   // Add new domain with default settings
   const newDomain: Domain = {
@@ -303,15 +372,32 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
   };
 
   domains.push(newDomain);
+  currentDomainConfig = newDomain;
   await browserAPI.storage.local.set({ domains });
 
   // Update UI
   updateStats();
-  updateAddDomainButton();
+  renderDomainConfig();
+  updateButtons();
+  reloadCurrentTab();
+});
 
-  // Open settings page to configure the new domain
-  browserAPI.runtime.openOptionsPage();
-  window.close();
+// Event: Remove This Domain button
+document.getElementById('removeDomain')!.addEventListener('click', async () => {
+  if (!currentDomainConfig) return;
+
+  const confirmed = confirm(`Remove ${currentDomain} from configured domains?`);
+  if (!confirmed) return;
+
+  domains = domains.filter(d => d.id !== currentDomainConfig!.id);
+  currentDomainConfig = null;
+  await browserAPI.storage.local.set({ domains });
+
+  // Update UI
+  updateStats();
+  renderDomainConfig();
+  updateButtons();
+  reloadCurrentTab();
 });
 
 // Event: Open Settings button
