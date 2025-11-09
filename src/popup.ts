@@ -80,20 +80,89 @@ function updateStats() {
   document.getElementById('domainsCount')!.textContent = String(domainsCount);
 }
 
-// Render group toggles
+// Get groups active for current domain
+function getGroupsForCurrentDomain(): { group: Group; isActive: boolean }[] {
+  if (!currentDomain) return [];
+
+  // Find domain configuration for current domain
+  const domainConfig = domains.find(d => {
+    if (d.matchMode === 'exact') {
+      return d.domain === currentDomain;
+    } else if (d.matchMode === 'all-subdomains') {
+      return currentDomain === d.domain || currentDomain.endsWith('.' + d.domain);
+    } else { // domain-and-www
+      return currentDomain === d.domain || currentDomain === 'www.' + d.domain;
+    }
+  });
+
+  if (!domainConfig) {
+    // Domain not configured - no groups apply
+    return [];
+  }
+
+  // Get enabled groups
+  const enabledGroups = groups.filter(g => g.enabled);
+
+  // Apply domain's group filtering
+  let activeGroups: Group[];
+  if (!domainConfig.groups || domainConfig.groups.length === 0) {
+    // Use all enabled groups
+    activeGroups = enabledGroups;
+  } else if (domainConfig.groupMode === 'only') {
+    // Only specified groups
+    activeGroups = enabledGroups.filter(g => domainConfig.groups!.includes(g.name));
+  } else {
+    // All except specified groups
+    activeGroups = enabledGroups.filter(g => !domainConfig.groups!.includes(g.name));
+  }
+
+  // Return all enabled groups with active status
+  return enabledGroups.map(g => ({
+    group: g,
+    isActive: activeGroups.some(ag => ag.id === g.id)
+  }));
+}
+
+// Render group toggles for current domain
 function renderGroupToggles() {
   const container = document.getElementById('groupToggles')!;
+  const section = document.getElementById('groupTogglesSection')!;
   container.innerHTML = '';
 
-  if (groups.length === 0) {
-    container.innerHTML = '<div class="empty-state">No groups configured</div>';
+  if (!currentDomain) {
+    section.style.display = 'none';
     return;
   }
 
-  groups.forEach(group => {
+  // Find domain configuration
+  const domainConfig = domains.find(d => {
+    if (d.matchMode === 'exact') {
+      return d.domain === currentDomain;
+    } else if (d.matchMode === 'all-subdomains') {
+      return currentDomain === d.domain || currentDomain.endsWith('.' + d.domain);
+    } else { // domain-and-www
+      return currentDomain === d.domain || currentDomain === 'www.' + d.domain;
+    }
+  });
+
+  if (!domainConfig) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+
+  const groupsForDomain = getGroupsForCurrentDomain();
+
+  if (groupsForDomain.length === 0) {
+    container.innerHTML = '<div class="empty-state">No groups enabled</div>';
+    return;
+  }
+
+  groupsForDomain.forEach(({ group, isActive }) => {
     const toggleContainer = document.createElement('div');
     toggleContainer.className = 'toggle-container';
-    if (!group.enabled) {
+    if (!isActive) {
       toggleContainer.classList.add('disabled');
     }
 
@@ -117,8 +186,8 @@ function renderGroupToggles() {
 
     const input = document.createElement('input');
     input.type = 'checkbox';
-    input.checked = group.enabled;
-    input.dataset.id = group.id;
+    input.checked = isActive;
+    input.dataset.groupName = group.name;
 
     const slider = document.createElement('span');
     slider.className = 'toggle-slider';
@@ -130,16 +199,49 @@ function renderGroupToggles() {
     toggleContainer.appendChild(switchLabel);
     container.appendChild(toggleContainer);
 
-    // Event listener for toggle
+    // Event listener for toggle - updates domain config
     input.addEventListener('change', async () => {
-      const groupIndex = groups.findIndex(g => g.id === group.id);
-      if (groupIndex !== -1) {
-        groups[groupIndex].enabled = input.checked;
-        await browserAPI.storage.local.set({ groups });
+      if (!domainConfig) return;
+
+      const groupName = group.name;
+      let newGroups = domainConfig.groups ? [...domainConfig.groups] : [];
+      const currentMode = domainConfig.groupMode || 'only';
+
+      if (currentMode === 'only') {
+        // In "only" mode - add/remove from the list
+        if (input.checked) {
+          if (!newGroups.includes(groupName)) {
+            newGroups.push(groupName);
+          }
+        } else {
+          newGroups = newGroups.filter(n => n !== groupName);
+        }
+      } else {
+        // In "except" mode - remove/add from exceptions
+        if (input.checked) {
+          newGroups = newGroups.filter(n => n !== groupName);
+        } else {
+          if (!newGroups.includes(groupName)) {
+            newGroups.push(groupName);
+          }
+        }
+      }
+
+      // Update domain config
+      const domainIndex = domains.findIndex(d => d.id === domainConfig.id);
+      if (domainIndex !== -1) {
+        if (newGroups.length === 0) {
+          // No specific groups - use all
+          delete domains[domainIndex].groups;
+          delete domains[domainIndex].groupMode;
+        } else {
+          domains[domainIndex].groups = newGroups;
+          domains[domainIndex].groupMode = currentMode;
+        }
+        await browserAPI.storage.local.set({ domains });
 
         // Update UI
         toggleContainer.classList.toggle('disabled', !input.checked);
-        updateStats();
 
         // Reload current tab
         reloadCurrentTab();
