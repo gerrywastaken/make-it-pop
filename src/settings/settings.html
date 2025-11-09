@@ -6,58 +6,56 @@
   <link rel="stylesheet" href="settings.css">
 </head>
 <body>
-  <h1>Make It Pop Settings</h1>
+  <header class="header">
+    <h1>Make It Pop Settings</h1>
+  </header>
 
-  <h2>Groups</h2>
-  <div>
-    <input type="text" id="groupName" placeholder="Group name"><br>
-    <strong>Light Mode:</strong>
-    Background: <input type="color" id="groupLightBg" value="#ffff00">
-    Text: <input type="color" id="groupLightText" value="#000000"><br>
-    <strong>Dark Mode:</strong>
-    Background: <input type="color" id="groupDarkBg" value="#3a3a00">
-    Text: <input type="color" id="groupDarkText" value="#ffffff"><br>
-    <textarea id="groupPhrases" placeholder="Phrases (one per line)"></textarea><br>
-    <button id="addGroup">Add Group</button>
-    <button id="cancelGroup" style="display: none;">Cancel</button>
+  <!-- Tab Navigation -->
+  <nav class="tab-nav">
+    <button class="tab-button active" data-tab="groups">Groups</button>
+    <button class="tab-button" data-tab="domains">Domains</button>
+    <button class="tab-button" data-tab="settings">Settings</button>
+  </nav>
+
+  <div class="content">
+    <!-- GROUPS TAB -->
+    <div class="tab-content active" id="groups">
+      <button class="add-button primary" id="addGroup">+ Add Group</button>
+      <div style="clear: both;"></div>
+      <div id="groupsList"></div>
+    </div>
+
+    <!-- DOMAINS TAB -->
+    <div class="tab-content" id="domains">
+      <button class="add-button primary" id="addDomain">+ Add Domain</button>
+      <div style="clear: both;"></div>
+      <div id="domainsList"></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div class="tab-content" id="settings">
+      <div class="settings-section">
+        <h3>📥 Import / Export</h3>
+        <p class="settings-description">
+          Export your configuration to share with others or back up your settings.
+        </p>
+        <button id="exportData" class="primary">Export Configuration</button>
+        <button id="importData" class="secondary">Import Configuration</button>
+        <input type="file" id="importFile" accept=".json,.json5" style="display: none;">
+        <div id="importStatus"></div>
+      </div>
+
+      <div class="settings-section">
+        <h3>ℹ️ Version Information</h3>
+        <p><strong>Build Version:</strong> <span id="buildVersion">Loading...</span></p>
+        <p><strong>Runtime Version:</strong> <span id="runtimeVersion">Loading...</span></p>
+        <div id="versionWarning">⚠️ Version mismatch - reload extension</div>
+      </div>
+    </div>
   </div>
-  <div id="groupsList"></div>
 
-  <hr>
-
-  <h2>Domains</h2>
-  <div>
-    <input type="text" id="domainPattern" placeholder="Domain (e.g., linkedin.com)"><br>
-    <strong>Match:</strong>
-    <label><input type="radio" name="domainMatchMode" value="domain-and-www" checked> Domain + www</label>
-    <label><input type="radio" name="domainMatchMode" value="all-subdomains"> All subdomains</label>
-    <label><input type="radio" name="domainMatchMode" value="exact"> Exact match</label><br>
-    <strong>Mode:</strong>
-    <label><input type="radio" name="domainMode" value="light" checked> Light</label>
-    <label><input type="radio" name="domainMode" value="dark"> Dark</label><br>
-    <div id="domainGroupsSelection"></div>
-    <button id="addDomain">Add Domain</button>
-    <button id="cancelDomain" style="display: none;">Cancel</button>
-  </div>
-  <div id="domainsList"></div>
-
-  <hr>
-
-  <h2>Export / Import</h2>
-  <div>
-    <button id="exportData">Export Configuration</button>
-    <button id="importData">Import Configuration</button>
-    <input type="file" id="importFile" accept=".json,.json5" style="display: none;">
-    <div id="importStatus" style="margin-top: 10px;"></div>
-  </div>
-
-  <hr>
-
-  <div id="versionInfo" style="font-size: 0.9em; color: #666; margin-top: 20px;">
-    <div><strong>Build Version:</strong> <span id="buildVersion">Loading...</span></div>
-    <div><strong>Runtime Version:</strong> <span id="runtimeVersion">Loading...</span></div>
-    <div id="versionWarning" style="color: #d00; font-weight: bold; display: none;">⚠️ Version mismatch - reload extension</div>
-  </div>
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
 
   <script type="module" src="settings.js"></script>
 </body>
