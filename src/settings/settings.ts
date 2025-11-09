@@ -385,6 +385,41 @@ async function init() {
   domains = await getDomains();
   render();
   displayVersionInfo();
+  setupTabSwitching();
+}
+
+// Tab switching logic
+function setupTabSwitching() {
+  document.querySelectorAll('.tab-button').forEach(button => {
+    button.addEventListener('click', () => {
+      const tabId = button.getAttribute('data-tab');
+      if (!tabId) return;
+
+      // Update buttons
+      document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+      button.classList.add('active');
+
+      // Update content
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const tabContent = document.getElementById(tabId);
+      if (tabContent) {
+        tabContent.classList.add('active');
+      }
+    });
+  });
+}
+
+// Toast notification helper
+function showToast(message: string, type: 'success' | 'warning' = 'success') {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.className = `toast ${type} show`;
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
 }
 
 function displayVersionInfo() {
@@ -414,7 +449,6 @@ function displayVersionInfo() {
 function render() {
   renderGroups();
   renderDomains();
-  renderDomainGroupsSelection();
 }
 
 function renderGroups() {
@@ -423,83 +457,342 @@ function renderGroups() {
   list.textContent = '';
 
   groups.forEach(g => {
-    const container = createElement('div', {
-      style: !g.enabled ? { opacity: '0.5' } : {}
-    });
+    const card = createGroupCard(g);
+    list.appendChild(card);
+  });
+}
 
-    // Create checkbox and label
-    const label = createElement('label');
-    const checkbox = createElement('input', {
-      attributes: {
-        type: 'checkbox',
-        'data-id': g.id,
-        ...(g.enabled ? { checked: '' } : {})
-      },
-      className: 'toggle-group-enabled'
-    });
-    const nameStrong = createElement('strong', { textContent: g.name });
-    const disabledText = !g.enabled ? createText(' (disabled)') : null;
-
-    label.appendChild(checkbox);
-    label.appendChild(createText(' '));
-    label.appendChild(nameStrong);
-    if (disabledText) label.appendChild(disabledText);
-    container.appendChild(label);
-    container.appendChild(createElement('br'));
-
-    // Light mode sample
-    container.appendChild(createText('Light: '));
-    container.appendChild(createElement('span', {
-      textContent: 'Sample',
-      style: {
-        background: g.lightBgColor,
-        color: g.lightTextColor,
-        padding: '2px 8px'
-      }
-    }));
-    container.appendChild(createText(' '));
-
-    // Dark mode sample
-    container.appendChild(createText('Dark: '));
-    container.appendChild(createElement('span', {
-      textContent: 'Sample',
-      style: {
-        background: g.darkBgColor,
-        color: g.darkTextColor,
-        padding: '2px 8px'
-      }
-    }));
-    container.appendChild(createText(' '));
-
-    // Edit button
-    container.appendChild(createElement('button', {
-      textContent: 'Edit',
-      className: 'edit-group',
-      attributes: { 'data-id': g.id }
-    }));
-    container.appendChild(createText(' '));
-
-    // Delete button
-    container.appendChild(createElement('button', {
-      textContent: 'Delete',
-      className: 'delete-group',
-      attributes: { 'data-id': g.id }
-    }));
-
-    // Phrases
-    const phrasesDiv = createElement('div');
-    phrasesDiv.appendChild(createText('Phrases: '));
-    phrasesDiv.appendChild(createText(g.phrases.join(', ')));
-    container.appendChild(phrasesDiv);
-
-    list.appendChild(container);
+function createGroupCard(g: Group): HTMLElement {
+  // Create card container
+  const card = createElement('div', {
+    className: `card viewing${!g.enabled ? ' disabled' : ''}`,
+    attributes: { 'data-id': g.id }
   });
 
-  // Update button text and show/hide cancel
-  const btn = document.getElementById('addGroup') as HTMLButtonElement;
-  const cancelBtn = document.getElementById('cancelGroup') as HTMLButtonElement;
-  btn.textContent = editingGroupId ? 'Update Group' : 'Add Group';
-  cancelBtn.style.display = editingGroupId ? 'inline-block' : 'none';
+  // Card header with toggle and title
+  const header = createElement('div', { className: 'card-header' });
+
+  const titleContainer = createElement('div', { className: 'card-title' });
+
+  // Toggle switch
+  const toggleLabel = createElement('label', { className: 'toggle-switch' });
+  const toggleInput = createElement('input', {
+    attributes: {
+      type: 'checkbox',
+      'data-id': g.id,
+      ...(g.enabled ? { checked: '' } : {})
+    },
+    className: 'toggle-group-enabled'
+  });
+  const toggleSlider = createElement('span', { className: 'toggle-slider' });
+  toggleLabel.appendChild(toggleInput);
+  toggleLabel.appendChild(toggleSlider);
+
+  titleContainer.appendChild(toggleLabel);
+  titleContainer.appendChild(createElement('span', { textContent: g.name }));
+
+  // Action buttons
+  const actions = createElement('div', { className: 'card-actions' });
+  actions.appendChild(createElement('button', {
+    textContent: '✏️',
+    className: 'icon-only edit-group',
+    attributes: { 'data-id': g.id, title: 'Edit' }
+  }));
+  actions.appendChild(createElement('button', {
+    textContent: '🗑️',
+    className: 'icon-only danger delete-group',
+    attributes: { 'data-id': g.id, title: 'Delete' }
+  }));
+
+  header.appendChild(titleContainer);
+  header.appendChild(actions);
+  card.appendChild(header);
+
+  // View mode content
+  const viewMode = createElement('div', { className: 'view-mode' });
+
+  // Color preview badges
+  const colorPreview = createElement('div', { className: 'color-preview' });
+  colorPreview.appendChild(createElement('span', {
+    textContent: 'Light: Sample Text',
+    className: 'color-badge',
+    style: {
+      background: g.lightBgColor,
+      color: g.lightTextColor
+    }
+  }));
+  colorPreview.appendChild(createElement('span', {
+    textContent: 'Dark: Sample Text',
+    className: 'color-badge',
+    style: {
+      background: g.darkBgColor,
+      color: g.darkTextColor
+    }
+  }));
+  viewMode.appendChild(colorPreview);
+
+  // Phrase count
+  const phraseCount = createElement('div', {
+    className: 'phrase-count',
+    textContent: `${g.phrases.length} phrase${g.phrases.length !== 1 ? 's' : ''}`
+  });
+  viewMode.appendChild(phraseCount);
+
+  // Phrase tags
+  const phraseTags = createElement('div', { className: 'phrase-tags' });
+  g.phrases.forEach(phrase => {
+    phraseTags.appendChild(createElement('span', {
+      className: 'phrase-tag',
+      textContent: phrase
+    }));
+  });
+  viewMode.appendChild(phraseTags);
+
+  card.appendChild(viewMode);
+
+  // Edit mode content
+  const editMode = createElement('div', { className: 'edit-mode' });
+
+  // Name input
+  const nameInput = createElement('input', {
+    attributes: {
+      type: 'text',
+      placeholder: 'Group name',
+      value: g.name
+    },
+    className: 'edit-group-name'
+  });
+  editMode.appendChild(nameInput);
+
+  // Color pickers
+  const colorPickerGroup = createElement('div', { className: 'color-picker-group' });
+
+  // Light mode colors
+  const lightModeItem = createElement('div', { className: 'color-picker-item' });
+  lightModeItem.appendChild(createElement('label', { textContent: 'Light Mode' }));
+
+  const lightBgInputs = createElement('div', { className: 'color-inputs' });
+  const lightBgColorInput = createElement('input', {
+    attributes: { type: 'color', value: g.lightBgColor },
+    className: 'edit-group-light-bg-color'
+  });
+  const lightBgHexInput = createElement('input', {
+    attributes: { type: 'text', value: g.lightBgColor, placeholder: 'Bg' },
+    className: 'edit-group-light-bg-hex color-hex'
+  });
+  lightBgInputs.appendChild(lightBgColorInput);
+  lightBgInputs.appendChild(lightBgHexInput);
+  lightModeItem.appendChild(lightBgInputs);
+
+  const lightTextInputs = createElement('div', { className: 'color-inputs' });
+  const lightTextColorInput = createElement('input', {
+    attributes: { type: 'color', value: g.lightTextColor },
+    className: 'edit-group-light-text-color'
+  });
+  const lightTextHexInput = createElement('input', {
+    attributes: { type: 'text', value: g.lightTextColor, placeholder: 'Text' },
+    className: 'edit-group-light-text-hex color-hex'
+  });
+  lightTextInputs.appendChild(lightTextColorInput);
+  lightTextInputs.appendChild(lightTextHexInput);
+  lightModeItem.appendChild(lightTextInputs);
+
+  colorPickerGroup.appendChild(lightModeItem);
+
+  // Dark mode colors
+  const darkModeItem = createElement('div', { className: 'color-picker-item' });
+  darkModeItem.appendChild(createElement('label', { textContent: 'Dark Mode' }));
+
+  const darkBgInputs = createElement('div', { className: 'color-inputs' });
+  const darkBgColorInput = createElement('input', {
+    attributes: { type: 'color', value: g.darkBgColor },
+    className: 'edit-group-dark-bg-color'
+  });
+  const darkBgHexInput = createElement('input', {
+    attributes: { type: 'text', value: g.darkBgColor, placeholder: 'Bg' },
+    className: 'edit-group-dark-bg-hex color-hex'
+  });
+  darkBgInputs.appendChild(darkBgColorInput);
+  darkBgInputs.appendChild(darkBgHexInput);
+  darkModeItem.appendChild(darkBgInputs);
+
+  const darkTextInputs = createElement('div', { className: 'color-inputs' });
+  const darkTextColorInput = createElement('input', {
+    attributes: { type: 'color', value: g.darkTextColor },
+    className: 'edit-group-dark-text-color'
+  });
+  const darkTextHexInput = createElement('input', {
+    attributes: { type: 'text', value: g.darkTextColor, placeholder: 'Text' },
+    className: 'edit-group-dark-text-hex color-hex'
+  });
+  darkTextInputs.appendChild(darkTextColorInput);
+  darkTextInputs.appendChild(darkTextHexInput);
+  darkModeItem.appendChild(darkTextInputs);
+
+  colorPickerGroup.appendChild(darkModeItem);
+  editMode.appendChild(colorPickerGroup);
+
+  // Sync color picker and hex inputs
+  syncColorInputs(lightBgColorInput, lightBgHexInput);
+  syncColorInputs(lightTextColorInput, lightTextHexInput);
+  syncColorInputs(darkBgColorInput, darkBgHexInput);
+  syncColorInputs(darkTextColorInput, darkTextHexInput);
+
+  // Phrases section
+  const phrasesLabel = createElement('label', {
+    textContent: 'Phrases:',
+    style: { fontWeight: '600', display: 'block', margin: '15px 0 10px' }
+  });
+  editMode.appendChild(phrasesLabel);
+
+  // Editable phrase tags
+  const editPhraseTags = createElement('div', { className: 'phrase-tags edit-phrase-tags' });
+  g.phrases.forEach(phrase => {
+    const tag = createElement('span', { className: 'phrase-tag' });
+    tag.appendChild(createText(phrase));
+    const removeBtn = createElement('button', { textContent: '×' });
+    removeBtn.addEventListener('click', () => tag.remove());
+    tag.appendChild(removeBtn);
+    editPhraseTags.appendChild(tag);
+  });
+  editMode.appendChild(editPhraseTags);
+
+  // Add phrase input
+  const phraseInputContainer = createElement('div', { className: 'phrase-input-container' });
+  const newPhraseInput = createElement('input', {
+    attributes: { type: 'text', placeholder: 'Add new phrase...' },
+    className: 'new-phrase-input'
+  });
+  const addPhraseBtn = createElement('button', {
+    textContent: '+ Add',
+    className: 'secondary add-phrase-btn'
+  });
+
+  addPhraseBtn.addEventListener('click', () => {
+    const phrase = newPhraseInput.value.trim();
+    if (phrase) {
+      const tag = createElement('span', { className: 'phrase-tag' });
+      tag.appendChild(createText(phrase));
+      const removeBtn = createElement('button', { textContent: '×' });
+      removeBtn.addEventListener('click', () => tag.remove());
+      tag.appendChild(removeBtn);
+      editPhraseTags.appendChild(tag);
+      newPhraseInput.value = '';
+    }
+  });
+
+  newPhraseInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addPhraseBtn.click();
+    }
+  });
+
+  phraseInputContainer.appendChild(newPhraseInput);
+  phraseInputContainer.appendChild(addPhraseBtn);
+  editMode.appendChild(phraseInputContainer);
+
+  // Button group
+  const buttonGroup = createElement('div', { className: 'button-group' });
+  const saveBtn = createElement('button', {
+    textContent: 'Save Changes',
+    className: 'primary save-group-btn'
+  });
+  const cancelBtn = createElement('button', {
+    textContent: 'Cancel',
+    className: 'secondary cancel-group-btn'
+  });
+
+  saveBtn.addEventListener('click', () => saveGroupFromCard(card));
+  cancelBtn.addEventListener('click', () => cancelGroupEdit(card));
+
+  buttonGroup.appendChild(saveBtn);
+  buttonGroup.appendChild(cancelBtn);
+  editMode.appendChild(buttonGroup);
+
+  card.appendChild(editMode);
+
+  return card;
+}
+
+function syncColorInputs(colorInput: HTMLInputElement, hexInput: HTMLInputElement) {
+  colorInput.addEventListener('input', () => {
+    hexInput.value = colorInput.value;
+  });
+  hexInput.addEventListener('input', () => {
+    if (/^#[0-9A-Fa-f]{6}$/.test(hexInput.value)) {
+      colorInput.value = hexInput.value;
+    }
+  });
+}
+
+async function saveGroupFromCard(card: HTMLElement) {
+  const id = card.getAttribute('data-id');
+
+  const nameInput = card.querySelector('.edit-group-name') as HTMLInputElement;
+  const lightBgHex = card.querySelector('.edit-group-light-bg-hex') as HTMLInputElement;
+  const lightTextHex = card.querySelector('.edit-group-light-text-hex') as HTMLInputElement;
+  const darkBgHex = card.querySelector('.edit-group-dark-bg-hex') as HTMLInputElement;
+  const darkTextHex = card.querySelector('.edit-group-dark-text-hex') as HTMLInputElement;
+  const phraseTags = card.querySelectorAll('.edit-phrase-tags .phrase-tag');
+
+  const name = nameInput.value.trim();
+  const phrases = Array.from(phraseTags).map(tag => {
+    const text = tag.childNodes[0].textContent || '';
+    return text.trim();
+  }).filter(Boolean);
+
+  if (!name || phrases.length === 0) {
+    showToast('Name and at least one phrase are required', 'warning');
+    return;
+  }
+
+  if (id) {
+    // Update existing group
+    const index = groups.findIndex(g => g.id === id);
+    if (index !== -1) {
+      groups[index] = {
+        ...groups[index],
+        name,
+        lightBgColor: lightBgHex.value,
+        lightTextColor: lightTextHex.value,
+        darkBgColor: darkBgHex.value,
+        darkTextColor: darkTextHex.value,
+        phrases,
+      };
+    }
+    await saveGroups(groups);
+    showToast('Group updated successfully!');
+  } else {
+    // Add new group
+    const newGroup: Group = {
+      id: crypto.randomUUID(),
+      name,
+      enabled: true,
+      lightBgColor: lightBgHex.value,
+      lightTextColor: lightTextHex.value,
+      darkBgColor: darkBgHex.value,
+      darkTextColor: darkTextHex.value,
+      phrases,
+    };
+    groups.push(newGroup);
+    await saveGroups(groups);
+    showToast('Group added successfully!');
+  }
+
+  render();
+}
+
+function cancelGroupEdit(card: HTMLElement) {
+  const id = card.getAttribute('data-id');
+  if (id) {
+    // Existing group - switch back to view mode
+    card.classList.remove('editing');
+    card.classList.add('viewing');
+  } else {
+    // New group - remove the card
+    card.remove();
+  }
 }
 
 function renderDomains() {
@@ -508,321 +801,370 @@ function renderDomains() {
   list.textContent = '';
 
   domains.forEach(d => {
-    const container = createElement('div');
-
-    // Domain (strong)
-    container.appendChild(createElement('strong', { textContent: d.domain }));
-    container.appendChild(createText(' ['));
-
-    // Match mode display
-    const matchModeDisplay = d.matchMode === 'domain-and-www' ? 'Domain + www' :
-                             d.matchMode === 'all-subdomains' ? 'All subdomains' :
-                             'Exact';
-    container.appendChild(createText(matchModeDisplay));
-    container.appendChild(createText('] ('));
-    container.appendChild(createText(d.mode));
-    container.appendChild(createText(' mode) - '));
-
-    // Show groups display based on new schema
-    let groupsDisplay;
-    if (!d.groups || d.groups.length === 0) {
-      groupsDisplay = 'All enabled groups';
-    } else {
-      const groupMode = d.groupMode || 'only';
-      const groupsList = d.groups.join(', ');
-      if (groupMode === 'only') {
-        groupsDisplay = `Only: ${groupsList}`;
-      } else {
-        groupsDisplay = `All except: ${groupsList}`;
-      }
-    }
-    container.appendChild(createText(groupsDisplay));
-    container.appendChild(createText(' '));
-
-    // Edit button
-    container.appendChild(createElement('button', {
-      textContent: 'Edit',
-      className: 'edit-domain',
-      attributes: { 'data-id': d.id }
-    }));
-    container.appendChild(createText(' '));
-
-    // Delete button
-    container.appendChild(createElement('button', {
-      textContent: 'Delete',
-      className: 'delete-domain',
-      attributes: { 'data-id': d.id }
-    }));
-
-    list.appendChild(container);
+    const card = createDomainCard(d);
+    list.appendChild(card);
   });
-
-  // Update button text and show/hide cancel
-  const btn = document.getElementById('addDomain') as HTMLButtonElement;
-  const cancelBtn = document.getElementById('cancelDomain') as HTMLButtonElement;
-  btn.textContent = editingDomainId ? 'Update Domain' : 'Add Domain';
-  cancelBtn.style.display = editingDomainId ? 'inline-block' : 'none';
 }
 
-function renderDomainGroupsSelection() {
-  const container = document.getElementById('domainGroupsSelection')!;
-  const editingDomain = editingDomainId ? domains.find(d => d.id === editingDomainId) : null;
-
-  // Determine group mode and selected groups
-  const hasGroups = editingDomain && editingDomain.groups && editingDomain.groups.length > 0;
-  const groupMode = hasGroups ? (editingDomain!.groupMode || 'only') : 'only';
-  const useAllGroups = !hasGroups;
-
-  // Clear existing content
-  container.textContent = '';
-
-  // Title
-  container.appendChild(createElement('strong', { textContent: 'Groups:' }));
-  container.appendChild(createElement('br'));
-
-  // Radio: Use all enabled groups
-  const allLabel = createElement('label');
-  const allRadio = createElement('input', {
-    attributes: {
-      type: 'radio',
-      name: 'domainGroupsMode',
-      value: 'all',
-      ...(useAllGroups ? { checked: '' } : {})
-    }
+function createDomainCard(d: Domain): HTMLElement {
+  // Create card container
+  const card = createElement('div', {
+    className: 'card viewing',
+    attributes: { 'data-id': d.id }
   });
-  allLabel.appendChild(allRadio);
-  allLabel.appendChild(createText(' Use all enabled groups'));
-  container.appendChild(allLabel);
-  container.appendChild(createElement('br'));
 
-  // Radio: Use only these groups
-  const onlyLabel = createElement('label');
-  const onlyRadio = createElement('input', {
+  // Card header
+  const header = createElement('div', { className: 'card-header' });
+  const title = createElement('h3', {
+    className: 'card-title',
+    textContent: d.domain
+  });
+
+  // Action buttons
+  const actions = createElement('div', { className: 'card-actions' });
+  actions.appendChild(createElement('button', {
+    textContent: '✏️',
+    className: 'icon-only edit-domain',
+    attributes: { 'data-id': d.id, title: 'Edit' }
+  }));
+  actions.appendChild(createElement('button', {
+    textContent: '🗑️',
+    className: 'icon-only danger delete-domain',
+    attributes: { 'data-id': d.id, title: 'Delete' }
+  }));
+
+  header.appendChild(title);
+  header.appendChild(actions);
+  card.appendChild(header);
+
+  // View mode content
+  const viewMode = createElement('div', { className: 'view-mode' });
+
+  // Match mode display
+  const matchModeDisplay = d.matchMode === 'domain-and-www' ? 'Domain + www' :
+                           d.matchMode === 'all-subdomains' ? 'All subdomains' :
+                           'Exact match';
+  const matchInfo = createElement('div', { className: 'domain-info' });
+  matchInfo.appendChild(createElement('strong', { textContent: 'Match: ' }));
+  matchInfo.appendChild(createText(matchModeDisplay));
+  viewMode.appendChild(matchInfo);
+
+  // Display mode (light/dark)
+  const modeInfo = createElement('div', { className: 'domain-info' });
+  modeInfo.appendChild(createElement('strong', { textContent: 'Mode: ' }));
+  modeInfo.appendChild(createText(d.mode === 'light' ? 'Light' : 'Dark'));
+  viewMode.appendChild(modeInfo);
+
+  // Groups display
+  let groupsDisplay;
+  if (!d.groups || d.groups.length === 0) {
+    groupsDisplay = 'All enabled groups';
+  } else {
+    const groupMode = d.groupMode || 'only';
+    const groupsList = d.groups.join(', ');
+    if (groupMode === 'only') {
+      groupsDisplay = `Only "${groupsList}"`;
+    } else {
+      groupsDisplay = `All except "${groupsList}"`;
+    }
+  }
+  const groupsInfo = createElement('div', { className: 'domain-info' });
+  groupsInfo.appendChild(createElement('strong', { textContent: 'Groups: ' }));
+  groupsInfo.appendChild(createText(groupsDisplay));
+  viewMode.appendChild(groupsInfo);
+
+  card.appendChild(viewMode);
+
+  // Edit mode content
+  const editMode = createElement('div', { className: 'edit-mode' });
+
+  // Domain input
+  const domainInput = createElement('input', {
+    attributes: {
+      type: 'text',
+      placeholder: 'Domain (e.g., linkedin.com)',
+      value: d.domain
+    },
+    className: 'edit-domain-input'
+  });
+  editMode.appendChild(domainInput);
+
+  // Match mode selection
+  const matchModeContainer = createElement('div', { style: { margin: '15px 0' } });
+  matchModeContainer.appendChild(createElement('label', {
+    textContent: 'Match:',
+    style: { fontWeight: '600', display: 'block', marginBottom: '10px' }
+  }));
+
+  const matchModes = [
+    { value: 'domain-and-www', label: 'Domain + www' },
+    { value: 'all-subdomains', label: 'All subdomains' },
+    { value: 'exact', label: 'Exact match' }
+  ];
+
+  matchModes.forEach(mode => {
+    const label = createElement('label', { style: { marginRight: '15px' } });
+    const radio = createElement('input', {
+      attributes: {
+        type: 'radio',
+        name: `match-${d.id}`,
+        value: mode.value,
+        ...(d.matchMode === mode.value ? { checked: '' } : {})
+      },
+      className: 'edit-domain-match-mode'
+    });
+    label.appendChild(radio);
+    label.appendChild(createText(' ' + mode.label));
+    matchModeContainer.appendChild(label);
+  });
+
+  editMode.appendChild(matchModeContainer);
+
+  // Mode selection (light/dark)
+  const modeContainer = createElement('div', { style: { margin: '15px 0' } });
+  modeContainer.appendChild(createElement('label', {
+    textContent: 'Mode:',
+    style: { fontWeight: '600', display: 'block', marginBottom: '10px' }
+  }));
+
+  const modes = [
+    { value: 'light', label: 'Light' },
+    { value: 'dark', label: 'Dark' }
+  ];
+
+  modes.forEach(mode => {
+    const label = createElement('label', { style: { marginRight: '20px' } });
+    const radio = createElement('input', {
+      attributes: {
+        type: 'radio',
+        name: `mode-${d.id}`,
+        value: mode.value,
+        ...(d.mode === mode.value ? { checked: '' } : {})
+      },
+      className: 'edit-domain-mode'
+    });
+    label.appendChild(radio);
+    label.appendChild(createText(' ' + mode.label));
+    modeContainer.appendChild(label);
+  });
+
+  editMode.appendChild(modeContainer);
+
+  // Group selection
+  const groupSelection = createElement('div', { className: 'group-selection' });
+  groupSelection.appendChild(createElement('div', {
+    className: 'group-selection-title',
+    textContent: 'Which groups should be active?'
+  }));
+
+  const hasGroups = d.groups && d.groups.length > 0;
+  const groupMode = hasGroups ? (d.groupMode || 'only') : 'all';
+
+  // "All enabled groups" option
+  const allGroupsLabel = createElement('label', { className: 'radio-group' });
+  const allGroupsRadio = createElement('input', {
     attributes: {
       type: 'radio',
-      name: 'domainGroupsMode',
+      name: `grouping-${d.id}`,
+      value: 'all',
+      ...(groupMode === 'all' ? { checked: '' } : {})
+    },
+    className: 'edit-domain-grouping'
+  });
+  allGroupsLabel.appendChild(allGroupsRadio);
+  allGroupsLabel.appendChild(createText(' All enabled groups'));
+  groupSelection.appendChild(allGroupsLabel);
+
+  // "Only these groups" option
+  const onlyGroupsLabel = createElement('label', { className: 'radio-group' });
+  const onlyGroupsRadio = createElement('input', {
+    attributes: {
+      type: 'radio',
+      name: `grouping-${d.id}`,
       value: 'only',
       ...(hasGroups && groupMode === 'only' ? { checked: '' } : {})
-    }
+    },
+    className: 'edit-domain-grouping'
   });
-  onlyLabel.appendChild(onlyRadio);
-  onlyLabel.appendChild(createText(' Use only these groups:'));
-  container.appendChild(onlyLabel);
-  container.appendChild(createElement('br'));
+  onlyGroupsLabel.appendChild(onlyGroupsRadio);
+  onlyGroupsLabel.appendChild(createText(' Only these groups:'));
+  groupSelection.appendChild(onlyGroupsLabel);
 
-  // Only groups list
   const onlyGroupsList = createElement('div', {
-    attributes: { id: 'onlyGroupsList' },
-    style: {
-      marginLeft: '20px',
-      display: hasGroups && groupMode === 'only' ? 'block' : 'none'
-    }
+    className: `checkbox-list${hasGroups && groupMode === 'only' ? ' visible' : ''}`,
+    attributes: { 'data-mode': 'only' }
   });
+
   groups.forEach(g => {
-    const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'only';
     const label = createElement('label');
     const checkbox = createElement('input', {
       attributes: {
         type: 'checkbox',
         value: g.name,
-        ...(isChecked ? { checked: '' } : {})
+        ...(hasGroups && groupMode === 'only' && d.groups!.includes(g.name) ? { checked: '' } : {})
       },
-      className: 'only-group-checkbox'
+      className: 'edit-domain-group-only'
     });
     label.appendChild(checkbox);
     label.appendChild(createText(' ' + g.name));
     onlyGroupsList.appendChild(label);
-    onlyGroupsList.appendChild(createElement('br'));
   });
-  container.appendChild(onlyGroupsList);
 
-  // Radio: Use all except these groups
-  const exceptLabel = createElement('label');
-  const exceptRadio = createElement('input', {
+  groupSelection.appendChild(onlyGroupsList);
+
+  // "All except these groups" option
+  const exceptGroupsLabel = createElement('label', { className: 'radio-group' });
+  const exceptGroupsRadio = createElement('input', {
     attributes: {
       type: 'radio',
-      name: 'domainGroupsMode',
+      name: `grouping-${d.id}`,
       value: 'except',
       ...(hasGroups && groupMode === 'except' ? { checked: '' } : {})
-    }
+    },
+    className: 'edit-domain-grouping'
   });
-  exceptLabel.appendChild(exceptRadio);
-  exceptLabel.appendChild(createText(' Use all except these groups:'));
-  container.appendChild(exceptLabel);
-  container.appendChild(createElement('br'));
+  exceptGroupsLabel.appendChild(exceptGroupsRadio);
+  exceptGroupsLabel.appendChild(createText(' All groups except:'));
+  groupSelection.appendChild(exceptGroupsLabel);
 
-  // Except groups list
   const exceptGroupsList = createElement('div', {
-    attributes: { id: 'exceptGroupsList' },
-    style: {
-      marginLeft: '20px',
-      display: hasGroups && groupMode === 'except' ? 'block' : 'none'
-    }
+    className: `checkbox-list${hasGroups && groupMode === 'except' ? ' visible' : ''}`,
+    attributes: { 'data-mode': 'except' }
   });
+
   groups.forEach(g => {
-    const isChecked = editingDomain && editingDomain.groups && editingDomain.groups.includes(g.name) && groupMode === 'except';
     const label = createElement('label');
     const checkbox = createElement('input', {
       attributes: {
         type: 'checkbox',
         value: g.name,
-        ...(isChecked ? { checked: '' } : {})
+        ...(hasGroups && groupMode === 'except' && d.groups!.includes(g.name) ? { checked: '' } : {})
       },
-      className: 'except-group-checkbox'
+      className: 'edit-domain-group-except'
     });
     label.appendChild(checkbox);
     label.appendChild(createText(' ' + g.name));
     exceptGroupsList.appendChild(label);
-    exceptGroupsList.appendChild(createElement('br'));
   });
-  container.appendChild(exceptGroupsList);
 
-  // Add event listeners to show/hide group lists based on selected mode
-  const radios = container.querySelectorAll<HTMLInputElement>('input[name="domainGroupsMode"]');
-  radios.forEach(radio => {
+  groupSelection.appendChild(exceptGroupsList);
+
+  // Add event listeners to show/hide group lists
+  const groupingRadios = editMode.querySelectorAll('.edit-domain-grouping');
+  groupingRadios.forEach(radio => {
     radio.addEventListener('change', () => {
-      const onlyList = document.getElementById('onlyGroupsList')!;
-      const exceptList = document.getElementById('exceptGroupsList')!;
+      const selected = (radio as HTMLInputElement).value;
+      const onlyList = groupSelection.querySelector('[data-mode="only"]') as HTMLElement;
+      const exceptList = groupSelection.querySelector('[data-mode="except"]') as HTMLElement;
 
-      if (radio.value === 'all') {
-        onlyList.style.display = 'none';
-        exceptList.style.display = 'none';
-      } else if (radio.value === 'only') {
-        onlyList.style.display = 'block';
-        exceptList.style.display = 'none';
-      } else if (radio.value === 'except') {
-        onlyList.style.display = 'none';
-        exceptList.style.display = 'block';
-      }
+      onlyList.classList.toggle('visible', selected === 'only');
+      exceptList.classList.toggle('visible', selected === 'except');
     });
   });
+
+  editMode.appendChild(groupSelection);
+
+  // Button group
+  const buttonGroup = createElement('div', { className: 'button-group' });
+  const saveBtn = createElement('button', {
+    textContent: 'Save Changes',
+    className: 'primary save-domain-btn'
+  });
+  const cancelBtn = createElement('button', {
+    textContent: 'Cancel',
+    className: 'secondary cancel-domain-btn'
+  });
+
+  saveBtn.addEventListener('click', () => saveDomainFromCard(card));
+  cancelBtn.addEventListener('click', () => cancelDomainEdit(card));
+
+  buttonGroup.appendChild(saveBtn);
+  buttonGroup.appendChild(cancelBtn);
+  editMode.appendChild(buttonGroup);
+
+  card.appendChild(editMode);
+
+  return card;
 }
 
-document.getElementById('addGroup')!.addEventListener('click', async () => {
-  const nameInput = document.getElementById('groupName') as HTMLInputElement;
-  const lightBgInput = document.getElementById('groupLightBg') as HTMLInputElement;
-  const lightTextInput = document.getElementById('groupLightText') as HTMLInputElement;
-  const darkBgInput = document.getElementById('groupDarkBg') as HTMLInputElement;
-  const darkTextInput = document.getElementById('groupDarkText') as HTMLInputElement;
-  const phrasesInput = document.getElementById('groupPhrases') as HTMLTextAreaElement;
+async function saveDomainFromCard(card: HTMLElement) {
+  const id = card.getAttribute('data-id');
 
-  const name = nameInput.value.trim();
-  const lightBgColor = lightBgInput.value;
-  const lightTextColor = lightTextInput.value;
-  const darkBgColor = darkBgInput.value;
-  const darkTextColor = darkTextInput.value;
-  const phrases = phrasesInput.value.split('\n').map(p => p.trim()).filter(Boolean);
+  const domainInput = card.querySelector('.edit-domain-input') as HTMLInputElement;
+  const domain = domainInput.value.trim();
 
-  if (!name || phrases.length === 0) return;
-
-  if (editingGroupId) {
-    // Update existing group (preserve enabled state)
-    const index = groups.findIndex(g => g.id === editingGroupId);
-    if (index !== -1) {
-      groups[index] = {
-        id: editingGroupId,
-        name,
-        enabled: groups[index].enabled,  // Preserve enabled state
-        lightBgColor,
-        lightTextColor,
-        darkBgColor,
-        darkTextColor,
-        phrases,
-      };
-    }
-    editingGroupId = null;
-  } else {
-    // Add new group (enabled by default)
-    const newGroup: Group = {
-      id: crypto.randomUUID(),
-      name,
-      enabled: true,  // New groups are enabled by default
-      lightBgColor,
-      lightTextColor,
-      darkBgColor,
-      darkTextColor,
-      phrases,
-    };
-    groups.push(newGroup);
+  if (!domain) {
+    showToast('Domain is required', 'warning');
+    return;
   }
 
-  await saveGroups(groups);
-
-  nameInput.value = '';
-  lightBgInput.value = '#ffff00';
-  lightTextInput.value = '#000000';
-  darkBgInput.value = '#3a3a00';
-  darkTextInput.value = '#ffffff';
-  phrasesInput.value = '';
-  render();
-});
-
-document.getElementById('addDomain')!.addEventListener('click', async () => {
-  const patternInput = document.getElementById('domainPattern') as HTMLInputElement;
-  const pattern = patternInput.value.trim();
-
-  if (!pattern) return;
-
-  const matchModeRadio = document.querySelector<HTMLInputElement>('input[name="domainMatchMode"]:checked');
+  // Get selected match mode
+  const matchModeRadio = card.querySelector('.edit-domain-match-mode:checked') as HTMLInputElement;
   const matchMode = (matchModeRadio?.value || 'domain-and-www') as 'domain-and-www' | 'all-subdomains' | 'exact';
 
-  const modeRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"]:checked');
+  // Get selected mode (light/dark)
+  const modeRadio = card.querySelector('.edit-domain-mode:checked') as HTMLInputElement;
   const mode = (modeRadio?.value || 'light') as 'light' | 'dark';
 
-  // Determine group selection mode
-  const groupsModeRadio = document.querySelector<HTMLInputElement>('input[name="domainGroupsMode"]:checked');
-  const groupsMode = groupsModeRadio?.value || 'all';
+  // Get selected grouping mode
+  const groupingRadio = card.querySelector('.edit-domain-grouping:checked') as HTMLInputElement;
+  const groupingMode = groupingRadio?.value || 'all';
 
   const newDomain: Domain = {
-    id: editingDomainId || crypto.randomUUID(),
-    domain: pattern,
+    id: id || crypto.randomUUID(),
+    domain,
     matchMode,
     mode,
   };
 
-  // Set groups and groupMode based on selection
-  if (groupsMode === 'only') {
-    const onlyCheckboxes = document.querySelectorAll<HTMLInputElement>('.only-group-checkbox:checked');
-    const selectedGroups = Array.from(onlyCheckboxes).map(cb => cb.value);
+  // Set groups based on grouping mode
+  if (groupingMode === 'only') {
+    const onlyCheckboxes = card.querySelectorAll('.edit-domain-group-only:checked');
+    const selectedGroups = Array.from(onlyCheckboxes).map(cb => (cb as HTMLInputElement).value);
     if (selectedGroups.length > 0) {
       newDomain.groups = selectedGroups;
       newDomain.groupMode = 'only';
     }
-  } else if (groupsMode === 'except') {
-    const exceptCheckboxes = document.querySelectorAll<HTMLInputElement>('.except-group-checkbox:checked');
-    const selectedGroups = Array.from(exceptCheckboxes).map(cb => cb.value);
+  } else if (groupingMode === 'except') {
+    const exceptCheckboxes = card.querySelectorAll('.edit-domain-group-except:checked');
+    const selectedGroups = Array.from(exceptCheckboxes).map(cb => (cb as HTMLInputElement).value);
     if (selectedGroups.length > 0) {
       newDomain.groups = selectedGroups;
       newDomain.groupMode = 'except';
     }
   }
-  // If groupsMode === 'all', don't set groups or groupMode (defaults to all enabled groups)
 
-  if (editingDomainId) {
+  if (id) {
     // Update existing domain
-    const index = domains.findIndex(d => d.id === editingDomainId);
+    const index = domains.findIndex(d => d.id === id);
     if (index !== -1) {
       domains[index] = newDomain;
     }
-    editingDomainId = null;
+    await saveDomains(domains);
+    showToast('Domain updated successfully!');
   } else {
     // Add new domain
     domains.push(newDomain);
+    await saveDomains(domains);
+    showToast('Domain added successfully!');
   }
 
-  await saveDomains(domains);
-
-  patternInput.value = '';
-  // Reset match mode to domain-and-www
-  const defaultMatchModeRadio = document.querySelector<HTMLInputElement>('input[name="domainMatchMode"][value="domain-and-www"]');
-  if (defaultMatchModeRadio) defaultMatchModeRadio.checked = true;
-  // Reset mode to light
-  const lightRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"][value="light"]');
-  if (lightRadio) lightRadio.checked = true;
   render();
-});
+}
 
-// Event delegation for group buttons and checkboxes
+function cancelDomainEdit(card: HTMLElement) {
+  const id = card.getAttribute('data-id');
+  if (id) {
+    // Existing domain - switch back to view mode
+    card.classList.remove('editing');
+    card.classList.add('viewing');
+  } else {
+    // New domain - remove the card
+    card.remove();
+  }
+}
+
+// Event delegation for groups list
 document.getElementById('groupsList')!.addEventListener('click', async (e) => {
   const target = e.target as HTMLElement;
 
@@ -837,112 +1179,102 @@ document.getElementById('groupsList')!.addEventListener('click', async (e) => {
 
     group.enabled = checkbox.checked;
     await saveGroups(groups);
+    showToast(`Group ${checkbox.checked ? 'enabled' : 'disabled'}`);
     render();
   } else if (target.classList.contains('edit-group')) {
+    // Toggle to edit mode
+    const id = target.getAttribute('data-id');
+    if (!id) return;
+
+    const card = document.querySelector(`.card[data-id="${id}"]`) as HTMLElement;
+    if (card) {
+      card.classList.remove('viewing');
+      card.classList.add('editing');
+    }
+  } else if (target.classList.contains('delete-group')) {
     const id = target.getAttribute('data-id');
     if (!id) return;
 
     const group = groups.find(g => g.id === id);
     if (!group) return;
 
-    editingGroupId = id;
-
-    const nameInput = document.getElementById('groupName') as HTMLInputElement;
-    const lightBgInput = document.getElementById('groupLightBg') as HTMLInputElement;
-    const lightTextInput = document.getElementById('groupLightText') as HTMLInputElement;
-    const darkBgInput = document.getElementById('groupDarkBg') as HTMLInputElement;
-    const darkTextInput = document.getElementById('groupDarkText') as HTMLInputElement;
-    const phrasesInput = document.getElementById('groupPhrases') as HTMLTextAreaElement;
-
-    nameInput.value = group.name;
-    lightBgInput.value = group.lightBgColor;
-    lightTextInput.value = group.lightTextColor;
-    darkBgInput.value = group.darkBgColor;
-    darkTextInput.value = group.darkTextColor;
-    phrasesInput.value = group.phrases.join('\n');
-
-    render();
-  } else if (target.classList.contains('delete-group')) {
-    const id = target.getAttribute('data-id');
-    if (!id) return;
-
-    groups = groups.filter(g => g.id !== id);
-    await saveGroups(groups);
-    render();
+    if (confirm(`Delete group "${group.name}"?`)) {
+      groups = groups.filter(g => g.id !== id);
+      await saveGroups(groups);
+      showToast('Group deleted');
+      render();
+    }
   }
 });
 
-// Event delegation for domain buttons
+// Event delegation for domains list
 document.getElementById('domainsList')!.addEventListener('click', async (e) => {
   const target = e.target as HTMLElement;
 
   if (target.classList.contains('edit-domain')) {
+    // Toggle to edit mode
+    const id = target.getAttribute('data-id');
+    if (!id) return;
+
+    const card = document.querySelector(`.card[data-id="${id}"]`) as HTMLElement;
+    if (card) {
+      card.classList.remove('viewing');
+      card.classList.add('editing');
+    }
+  } else if (target.classList.contains('delete-domain')) {
     const id = target.getAttribute('data-id');
     if (!id) return;
 
     const domain = domains.find(d => d.id === id);
     if (!domain) return;
 
-    editingDomainId = id;
-
-    const patternInput = document.getElementById('domainPattern') as HTMLInputElement;
-    patternInput.value = domain.domain;
-
-    // Set the match mode radio button
-    const matchModeRadio = document.querySelector<HTMLInputElement>(`input[name="domainMatchMode"][value="${domain.matchMode}"]`);
-    if (matchModeRadio) matchModeRadio.checked = true;
-
-    // Set the mode radio button
-    const modeRadio = document.querySelector<HTMLInputElement>(`input[name="domainMode"][value="${domain.mode}"]`);
-    if (modeRadio) modeRadio.checked = true;
-
-    render();
-  } else if (target.classList.contains('delete-domain')) {
-    const id = target.getAttribute('data-id');
-    if (!id) return;
-
-    domains = domains.filter(d => d.id !== id);
-    await saveDomains(domains);
-    render();
+    if (confirm(`Delete domain "${domain.domain}"?`)) {
+      domains = domains.filter(d => d.id !== id);
+      await saveDomains(domains);
+      showToast('Domain deleted');
+      render();
+    }
   }
 });
 
-document.getElementById('cancelGroup')!.addEventListener('click', () => {
-  editingGroupId = null;
+// Add Group button handler
+document.getElementById('addGroup')?.addEventListener('click', () => {
+  const newGroup: Group = {
+    id: '', // Will be set in save
+    name: 'New Group',
+    enabled: true,
+    lightBgColor: '#ffff00',
+    lightTextColor: '#000000',
+    darkBgColor: '#3a3a00',
+    darkTextColor: '#ffffff',
+    phrases: ['example phrase']
+  };
 
-  const nameInput = document.getElementById('groupName') as HTMLInputElement;
-  const lightBgInput = document.getElementById('groupLightBg') as HTMLInputElement;
-  const lightTextInput = document.getElementById('groupLightText') as HTMLInputElement;
-  const darkBgInput = document.getElementById('groupDarkBg') as HTMLInputElement;
-  const darkTextInput = document.getElementById('groupDarkText') as HTMLInputElement;
-  const phrasesInput = document.getElementById('groupPhrases') as HTMLTextAreaElement;
+  const card = createGroupCard(newGroup);
+  card.setAttribute('data-id', ''); // No ID yet
+  card.classList.remove('viewing');
+  card.classList.add('editing');
 
-  nameInput.value = '';
-  lightBgInput.value = '#ffff00';
-  lightTextInput.value = '#000000';
-  darkBgInput.value = '#3a3a00';
-  darkTextInput.value = '#ffffff';
-  phrasesInput.value = '';
-
-  render();
+  const list = document.getElementById('groupsList')!;
+  list.insertBefore(card, list.firstChild);
 });
 
-document.getElementById('cancelDomain')!.addEventListener('click', () => {
-  editingDomainId = null;
+// Add Domain button handler
+document.getElementById('addDomain')?.addEventListener('click', () => {
+  const newDomain: Domain = {
+    id: '', // Will be set in save
+    domain: 'example.com',
+    matchMode: 'domain-and-www',
+    mode: 'light'
+  };
 
-  const patternInput = document.getElementById('domainPattern') as HTMLInputElement;
-  patternInput.value = '';
+  const card = createDomainCard(newDomain);
+  card.setAttribute('data-id', ''); // No ID yet
+  card.classList.remove('viewing');
+  card.classList.add('editing');
 
-  // Reset match mode to domain-and-www
-  const defaultMatchModeRadio = document.querySelector<HTMLInputElement>('input[name="domainMatchMode"][value="domain-and-www"]');
-  if (defaultMatchModeRadio) defaultMatchModeRadio.checked = true;
-
-  // Reset mode to light
-  const lightRadio = document.querySelector<HTMLInputElement>('input[name="domainMode"][value="light"]');
-  if (lightRadio) lightRadio.checked = true;
-
-  // render() will reset the group selection UI to default state
-  render();
+  const list = document.getElementById('domainsList')!;
+  list.insertBefore(card, list.firstChild);
 });
 
 // Export data handler

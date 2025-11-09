@@ -5,15 +5,49 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="toggle-container">
-    <span class="toggle-label">Extension</span>
-    <label class="toggle-switch">
-      <input type="checkbox" id="enableToggle">
-      <span class="toggle-slider"></span>
-    </label>
+  <div class="header">
+    <h2>Make It Pop</h2>
+    <div class="current-domain">
+      <span class="status-indicator" id="statusIndicator"></span>
+      <span id="currentDomain">Loading...</span>
+    </div>
   </div>
-  <div class="status" id="status"></div>
-  <button id="openSettings">⚙️ Settings</button>
-  <script src="popup.js"></script>
+
+  <div class="section">
+    <div class="toggle-container">
+      <span class="toggle-label">
+        <strong>Extension</strong>
+      </span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="enableToggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="activeGroupsCount">0</div>
+        <div class="stat-label">Active Groups</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="domainsCount">0</div>
+        <div class="stat-label">Domains</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Domain Configuration Section -->
+  <div class="section" id="domainConfigSection">
+    <div class="section-title">Domain Configuration</div>
+    <div id="domainConfig"></div>
+  </div>
+
+  <div class="quick-actions">
+    <button class="primary" id="addDomain">+ Add This Domain</button>
+    <button class="danger" id="removeDomain" style="display: none;">Remove This Domain</button>
+    <button class="secondary" id="openSettings">⚙️ Open Settings</button>
+  </div>
+
+  <script type="module" src="popup.js"></script>
 </body>
 </html>
