@@ -11,7 +11,8 @@ export interface Group {
 
 export interface Domain {
   id: string;
-  pattern: string;
+  domain: string;  // Just the domain without wildcards (e.g., "linkedin.com")
+  matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';  // How to match the domain
   mode: 'light' | 'dark';
   groups?: string[];  // List of group names (optional, omit for "all enabled groups")
   groupMode?: 'only' | 'except';  // Defaults to 'only' if groups specified
