@@ -713,7 +713,7 @@
       <!-- Domain Card with 3-way group filtering -->
       <div class="card viewing" id="domain1">
         <div class="card-header">
-          <h3 class="card-title">*.linkedin.com</h3>
+          <h3 class="card-title">linkedin.com</h3>
           <div class="card-actions">
             <button class="icon-only" onclick="toggleEdit('domain1')">✏️</button>
             <button class="icon-only danger">🗑️</button>
@@ -721,6 +721,9 @@
         </div>
 
         <div class="view-mode">
+          <div class="domain-info">
+            <strong>Match:</strong> All subdomains
+          </div>
           <div class="domain-info">
             <strong>Mode:</strong> Light
           </div>
@@ -730,7 +733,20 @@
         </div>
 
         <div class="edit-mode">
-          <input type="text" value="*.linkedin.com" placeholder="Domain pattern (e.g., *.example.com)">
+          <input type="text" value="linkedin.com" placeholder="Domain (e.g., linkedin.com)">
+
+          <div style="margin: 15px 0;">
+            <label style="font-weight: 600; display: block; margin-bottom: 10px;">Match:</label>
+            <label style="margin-right: 15px;">
+              <input type="radio" name="domain1-match" value="domain-and-www"> Domain + www
+            </label>
+            <label style="margin-right: 15px;">
+              <input type="radio" name="domain1-match" value="all-subdomains" checked> All subdomains
+            </label>
+            <label>
+              <input type="radio" name="domain1-match" value="exact"> Exact match
+            </label>
+          </div>
 
           <div style="margin: 15px 0;">
             <label style="font-weight: 600; display: block; margin-bottom: 10px;">Mode:</label>
@@ -794,6 +810,7 @@
           </div>
         </div>
         <div class="view-mode">
+          <div class="domain-info"><strong>Match:</strong> Domain + www</div>
           <div class="domain-info"><strong>Mode:</strong> Dark</div>
           <div class="domain-info"><strong>Groups:</strong> All enabled groups</div>
         </div>
@@ -801,13 +818,14 @@
 
       <div class="card viewing">
         <div class="card-header">
-          <h3 class="card-title">*.stackoverflow.com</h3>
+          <h3 class="card-title">stackoverflow.com</h3>
           <div class="card-actions">
             <button class="icon-only">✏️</button>
             <button class="icon-only danger">🗑️</button>
           </div>
         </div>
         <div class="view-mode">
+          <div class="domain-info"><strong>Match:</strong> Exact match</div>
           <div class="domain-info"><strong>Mode:</strong> Light</div>
           <div class="domain-info"><strong>Groups:</strong> All except "Bad Phrases"</div>
         </div>

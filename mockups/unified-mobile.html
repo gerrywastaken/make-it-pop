@@ -604,9 +604,10 @@
       <!-- Domain Card 1 -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">*.linkedin.com</h3>
+          <h3 class="card-title">linkedin.com</h3>
           <button class="card-menu-btn" onclick="showDomainMenu('linkedin.com')">⋯</button>
         </div>
+        <div class="domain-info">🎯 All subdomains</div>
         <div class="domain-info">🌓 Light mode</div>
         <div class="domain-info">📋 Only: Good Phrases, Warning</div>
       </div>
@@ -617,6 +618,7 @@
           <h3 class="card-title">github.com</h3>
           <button class="card-menu-btn" onclick="showDomainMenu('github.com')">⋯</button>
         </div>
+        <div class="domain-info">🎯 Domain + www</div>
         <div class="domain-info">🌑 Dark mode</div>
         <div class="domain-info">📋 All enabled groups</div>
       </div>
@@ -624,9 +626,10 @@
       <!-- Domain Card 3 -->
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title">*.stackoverflow.com</h3>
+          <h3 class="card-title">stackoverflow.com</h3>
           <button class="card-menu-btn" onclick="showDomainMenu('stackoverflow.com')">⋯</button>
         </div>
+        <div class="domain-info">🎯 Exact match</div>
         <div class="domain-info">🌓 Light mode</div>
         <div class="domain-info">📋 All except: Bad Phrases</div>
       </div>
@@ -726,7 +729,16 @@
       <h3 id="domainSheetTitle">Domain Settings</h3>
 
       <div style="margin-bottom: 20px;">
-        <label style="font-weight: 600; display: block; margin-bottom: 10px;">Mode</label>
+        <label style="font-weight: 600; display: block; margin-bottom: 10px;">Match Mode</label>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button class="secondary">🎯 Domain + www</button>
+          <button class="secondary">🎯 All subdomains</button>
+          <button class="secondary">🎯 Exact match</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 10px;">Display Mode</label>
         <div style="display: flex; gap: 10px;">
           <button class="secondary" style="flex: 1;">🌓 Light</button>
           <button class="secondary" style="flex: 1;">🌑 Dark</button>
