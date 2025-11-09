@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empty States & Onboarding - Mockup</title>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --border-color: #ddd;
+      --card-bg: #f9f9f9;
+      --primary-color: #4CAF50;
+      --primary-hover: #45a049;
+      --muted-color: #666;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #1e1e1e;
+        --text-color: #e0e0e0;
+        --border-color: #444;
+        --card-bg: #2a2a2a;
+        --primary-color: #5cb85c;
+        --primary-hover: #4cae4c;
+        --muted-color: #999;
+      }
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .mockup-notice {
+      background: #fff3cd;
+      color: #856404;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      border: 1px solid #ffc107;
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 28px;
+    }
+
+    .subtitle {
+      color: var(--muted-color);
+      margin-bottom: 40px;
+    }
+
+    /* Empty State Container */
+    .empty-state {
+      text-align: center;
+      padding: 60px 40px;
+      background: var(--card-bg);
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      margin: 40px 0;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.6;
+    }
+
+    .empty-state-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 0 0 10px 0;
+    }
+
+    .empty-state-description {
+      color: var(--muted-color);
+      margin: 0 0 25px 0;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .empty-state-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    button.primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    button.primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--text-color);
+      border: 2px solid var(--border-color);
+    }
+
+    button.secondary:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    /* Onboarding Card */
+    .onboarding-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin: 40px 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .onboarding-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .onboarding-card h2 {
+      margin: 0 0 15px 0;
+      font-size: 24px;
+    }
+
+    .onboarding-card p {
+      margin: 0 0 25px 0;
+      opacity: 0.9;
+      line-height: 1.6;
+    }
+
+    .onboarding-steps {
+      display: grid;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .onboarding-step {
+      background: rgba(255,255,255,0.15);
+      padding: 15px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      backdrop-filter: blur(10px);
+    }
+
+    .step-number {
+      background: white;
+      color: #667eea;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .step-text {
+      flex: 1;
+    }
+
+    .onboarding-card button {
+      background: white;
+      color: #667eea;
+    }
+
+    .onboarding-card button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+
+    /* Quick Start Guide */
+    .quick-start {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 25px;
+      margin: 40px 0;
+    }
+
+    .quick-start h3 {
+      margin: 0 0 20px 0;
+      font-size: 18px;
+    }
+
+    .quick-start-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+    }
+
+    .quick-start-item {
+      text-align: center;
+      padding: 20px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .quick-start-item:hover {
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .quick-start-item-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+
+    .quick-start-item-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .quick-start-item-desc {
+      font-size: 13px;
+      color: var(--muted-color);
+    }
+
+    /* Example Preset Cards */
+    .example-presets {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .example-preset {
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .example-preset:hover {
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+    }
+
+    .preset-name {
+      font-weight: 600;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    .preset-sample {
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      text-align: center;
+      margin-bottom: 5px;
+    }
+
+    /* Section Divider */
+    .section-divider {
+      border: 0;
+      height: 1px;
+      background: var(--border-color);
+      margin: 60px 0;
+    }
+
+    /* Tips */
+    .tips-box {
+      background: #e3f2fd;
+      color: #0d47a1;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid #2196F3;
+      margin: 30px 0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .tips-box {
+        background: #1a2332;
+        color: #90caf9;
+        border-left-color: #42a5f5;
+      }
+    }
+
+    .tips-box h4 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+
+    .tips-box ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .tips-box li {
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="mockup-notice">
+    📐 <strong>Mockup:</strong> Different empty states and onboarding patterns
+  </div>
+
+  <h1>Empty States & Onboarding</h1>
+  <p class="subtitle">Helpful guidance when getting started</p>
+
+  <!-- First-Time User Experience -->
+  <section>
+    <h2>First-Time User (No Groups or Domains)</h2>
+
+    <div class="onboarding-card">
+      <h2>👋 Welcome to Make It Pop!</h2>
+      <p>Highlight important phrases on any website with custom colors. Get started in 3 easy steps:</p>
+
+      <div class="onboarding-steps">
+        <div class="onboarding-step">
+          <div class="step-number">1</div>
+          <div class="step-text">
+            <strong>Create a group</strong> and add phrases you want to highlight
+          </div>
+        </div>
+        <div class="onboarding-step">
+          <div class="step-number">2</div>
+          <div class="step-text">
+            <strong>Add a domain</strong> where you want highlighting to work
+          </div>
+        </div>
+        <div class="onboarding-step">
+          <div class="step-number">3</div>
+          <div class="step-text">
+            <strong>Visit the website</strong> and watch your phrases light up!
+          </div>
+        </div>
+      </div>
+
+      <button class="primary">Create Your First Group</button>
+    </div>
+
+    <div class="quick-start">
+      <h3>Or start with a template:</h3>
+      <div class="example-presets">
+        <div class="example-preset">
+          <div class="preset-name">✅ Job Hunting</div>
+          <div class="preset-sample" style="background: #4CAF50; color: white;">Benefits</div>
+          <div class="preset-sample" style="background: #2196F3; color: white;">Remote</div>
+          <div style="font-size: 12px; color: var(--muted-color); margin-top: 8px;">
+            For LinkedIn, Indeed, etc.
+          </div>
+        </div>
+
+        <div class="example-preset">
+          <div class="preset-name">📚 Research</div>
+          <div class="preset-sample" style="background: #FFEB3B; color: #000;">Key Term</div>
+          <div class="preset-sample" style="background: #9C27B0; color: white;">Author</div>
+          <div style="font-size: 12px; color: var(--muted-color); margin-top: 8px;">
+            For academic papers
+          </div>
+        </div>
+
+        <div class="example-preset">
+          <div class="preset-name">💻 Code Review</div>
+          <div class="preset-sample" style="background: #4CAF50; color: white;">Approved</div>
+          <div class="preset-sample" style="background: #F44336; color: white;">Issues</div>
+          <div style="font-size: 12px; color: var(--muted-color); margin-top: 8px;">
+            For GitHub, GitLab
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- Empty Groups State -->
+  <section>
+    <h2>Empty Groups State</h2>
+
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <h3 class="empty-state-title">No groups yet</h3>
+      <p class="empty-state-description">
+        Groups contain phrases you want to highlight with specific colors.<br>
+        Create your first group to get started!
+      </p>
+      <div class="empty-state-actions">
+        <button class="primary">+ Create Group</button>
+        <button class="secondary">Import Configuration</button>
+      </div>
+    </div>
+
+    <div class="tips-box">
+      <h4>💡 Pro Tips</h4>
+      <ul>
+        <li>Use different groups for different types of phrases (positive, negative, neutral)</li>
+        <li>Each group can have its own colors for light and dark mode</li>
+        <li>You can enable or disable groups anytime without deleting them</li>
+      </ul>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- Empty Domains State -->
+  <section>
+    <h2>Empty Domains State</h2>
+
+    <div class="empty-state">
+      <div class="empty-state-icon">🌐</div>
+      <h3 class="empty-state-title">No domains configured</h3>
+      <p class="empty-state-description">
+        Add websites where you want phrase highlighting to work.<br>
+        You can use patterns like <code>*.linkedin.com</code> to match all subdomains.
+      </p>
+      <div class="empty-state-actions">
+        <button class="primary">+ Add Domain</button>
+        <button class="secondary">See Examples</button>
+      </div>
+    </div>
+
+    <div class="tips-box">
+      <h4>💡 Domain Pattern Examples</h4>
+      <ul>
+        <li><code>linkedin.com</code> - Matches exactly linkedin.com</li>
+        <li><code>*.linkedin.com</code> - Matches all LinkedIn subdomains (www, jobs, etc.)</li>
+        <li><code>github.com</code> - Great for code reviews and pull requests</li>
+        <li><code>*.stackoverflow.com</code> - All Stack Overflow sites</li>
+      </ul>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- No Search Results State -->
+  <section>
+    <h2>No Search Results State</h2>
+
+    <div class="empty-state">
+      <div class="empty-state-icon">🔍</div>
+      <h3 class="empty-state-title">No results found</h3>
+      <p class="empty-state-description">
+        No groups match your search "<strong>marketing</strong>".<br>
+        Try a different search term or create a new group.
+      </p>
+      <div class="empty-state-actions">
+        <button class="primary">Clear Search</button>
+        <button class="secondary">Create "Marketing" Group</button>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- Group has no phrases -->
+  <section>
+    <h2>Group Without Phrases State</h2>
+
+    <div class="empty-state">
+      <div class="empty-state-icon">💬</div>
+      <h3 class="empty-state-title">No phrases in this group</h3>
+      <p class="empty-state-description">
+        Add phrases you want to highlight when this group is active.<br>
+        Each phrase should be at least one word.
+      </p>
+      <div class="empty-state-actions">
+        <button class="primary">Add Phrases</button>
+      </div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <!-- Import Success State -->
+  <section>
+    <h2>Success States</h2>
+
+    <div style="background: #d4edda; color: #155724; padding: 20px; border-radius: 8px; border-left: 4px solid #28a745; margin: 20px 0;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 24px;">✅</div>
+        <div>
+          <strong style="display: block; margin-bottom: 5px;">Configuration imported successfully!</strong>
+          <span style="opacity: 0.8;">Loaded 5 groups and 3 domains from your file.</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background: #fff3cd; color: #856404; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 20px 0;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 24px;">⚠️</div>
+        <div>
+          <strong style="display: block; margin-bottom: 5px;">Group disabled</strong>
+          <span style="opacity: 0.8;">This group won't highlight any phrases until you enable it.</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="background: #f8d7da; color: #721c24; padding: 20px; border-radius: 8px; border-left: 4px solid #dc3545; margin: 20px 0;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 24px;">❌</div>
+        <div>
+          <strong style="display: block; margin-bottom: 5px;">Import failed</strong>
+          <span style="opacity: 0.8;">Invalid JSON format: Unexpected token on line 15.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div style="background: var(--card-bg); border-left: 4px solid var(--primary-color); padding: 15px; margin-top: 40px;">
+    <h4 style="margin-top: 0;">💡 Implementation Notes</h4>
+    <ul>
+      <li><strong>Benefits:</strong> Reduces confusion, guides users, professional appearance</li>
+      <li><strong>Empty states:</strong> Should always have a clear action (CTA button)</li>
+      <li><strong>Onboarding:</strong> Show once on first load, maybe dismissible</li>
+      <li><strong>Templates:</strong> Pre-built configs users can import with one click</li>
+      <li><strong>Illustrations:</strong> Could replace emoji with custom SVG illustrations</li>
+      <li><strong>Complexity:</strong> Low - mostly copy and conditional rendering</li>
+      <li><strong>Priority:</strong> High - greatly improves first-time user experience</li>
+    </ul>
+  </div>
+</body>
+</html>
