@@ -1049,6 +1049,8 @@ function createDomainCard(d: Domain): HTMLElement {
 
   groupSelection.appendChild(exceptGroupsList);
 
+  editMode.appendChild(groupSelection);
+
   // Add event listeners to show/hide group lists
   const groupingRadios = editMode.querySelectorAll('.edit-domain-grouping');
   groupingRadios.forEach(radio => {
@@ -1061,8 +1063,6 @@ function createDomainCard(d: Domain): HTMLElement {
       exceptList.classList.toggle('visible', selected === 'except');
     });
   });
-
-  editMode.appendChild(groupSelection);
 
   // Button group
   const buttonGroup = createElement('div', { className: 'button-group' });
