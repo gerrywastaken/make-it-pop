@@ -2,7 +2,9 @@ name: Build Extension
 
 on:
   push:
-    branches: [ main ]
+    branches: [ '**' ]  # Build on all branches
+  pull_request:
+    branches: [ '**' ]  # Also build on PRs
 
 jobs:
   build:
@@ -42,7 +44,7 @@ jobs:
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
-          name: extension-build-${{ github.sha }}
+          name: extension-build-${{ github.ref_name }}-${{ github.sha }}
           path: dist/
           retention-days: 30
 
@@ -55,7 +57,7 @@ jobs:
       - name: Upload extension zip
         uses: actions/upload-artifact@v4
         with:
-          name: extension-zip-${{ github.sha }}
+          name: extension-zip-${{ github.ref_name }}-${{ github.sha }}
           path: makeitpop-extension.zip
           retention-days: 30
 
@@ -69,6 +71,7 @@ jobs:
           echo "Release tag: ${RELEASE_TAG}"
 
       - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.tag }}
