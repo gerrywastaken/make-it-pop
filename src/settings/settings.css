@@ -344,6 +344,13 @@ textarea {
   margin-bottom: 10px;
 }
 
+.phrase-raw-textarea {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 200px;
+}
+
 .color-picker-group {
   display: flex;
   gap: 20px;
@@ -386,6 +393,21 @@ textarea {
 .phrase-input-container input {
   flex: 1;
   margin: 0;
+}
+
+.raw-mode-toggle {
+  font-size: 12px;
+  padding: 6px 12px;
+  margin: 0;
+}
+
+.phrase-normal-mode,
+.phrase-raw-mode {
+  animation: fadeIn 0.2s;
+}
+
+.phrase-raw-mode {
+  margin-top: 10px;
 }
 
 /* Radio Buttons */

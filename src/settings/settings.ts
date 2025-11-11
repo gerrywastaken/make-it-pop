@@ -639,11 +639,30 @@ function createGroupCard(g: Group): HTMLElement {
   syncColorInputs(darkTextColorInput, darkTextHexInput);
 
   // Phrases section
-  const phrasesLabel = createElement('label', {
-    textContent: 'Phrases:',
-    style: { fontWeight: '600', display: 'block', margin: '15px 0 10px' }
+  const phrasesHeader = createElement('div', {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      margin: '15px 0 10px'
+    }
   });
-  editMode.appendChild(phrasesLabel);
+  phrasesHeader.appendChild(createElement('label', {
+    textContent: 'Phrases:',
+    style: { fontWeight: '600' }
+  }));
+
+  // Raw mode toggle button
+  const rawModeToggle = createElement('button', {
+    textContent: '📝 Raw Mode',
+    className: 'secondary raw-mode-toggle',
+    attributes: { type: 'button', title: 'Toggle raw text editing mode' }
+  });
+  phrasesHeader.appendChild(rawModeToggle);
+  editMode.appendChild(phrasesHeader);
+
+  // Container for normal mode (tags + input)
+  const normalModeContainer = createElement('div', { className: 'phrase-normal-mode' });
 
   // Editable phrase tags
   const editPhraseTags = createElement('div', { className: 'phrase-tags edit-phrase-tags' });
@@ -655,7 +674,7 @@ function createGroupCard(g: Group): HTMLElement {
     tag.appendChild(removeBtn);
     editPhraseTags.appendChild(tag);
   });
-  editMode.appendChild(editPhraseTags);
+  normalModeContainer.appendChild(editPhraseTags);
 
   // Add phrase input
   const phraseInputContainer = createElement('div', { className: 'phrase-input-container' });
@@ -690,7 +709,66 @@ function createGroupCard(g: Group): HTMLElement {
 
   phraseInputContainer.appendChild(newPhraseInput);
   phraseInputContainer.appendChild(addPhraseBtn);
-  editMode.appendChild(phraseInputContainer);
+  normalModeContainer.appendChild(phraseInputContainer);
+  editMode.appendChild(normalModeContainer);
+
+  // Container for raw mode (textarea)
+  const rawModeContainer = createElement('div', {
+    className: 'phrase-raw-mode',
+    style: { display: 'none' }
+  });
+  const rawModeTextarea = createElement('textarea', {
+    className: 'phrase-raw-textarea',
+    attributes: {
+      placeholder: 'Enter one phrase per line...',
+      rows: '10'
+    }
+  });
+  rawModeContainer.appendChild(rawModeTextarea);
+  editMode.appendChild(rawModeContainer);
+
+  // Toggle between normal and raw mode
+  let isRawMode = false;
+  rawModeToggle.addEventListener('click', (e) => {
+    e.preventDefault();
+    isRawMode = !isRawMode;
+
+    if (isRawMode) {
+      // Switch to raw mode: collect phrases from tags and populate textarea
+      const phrases = Array.from(editPhraseTags.querySelectorAll('.phrase-tag')).map(tag => {
+        const text = tag.childNodes[0].textContent || '';
+        return text.trim();
+      }).filter(Boolean);
+      rawModeTextarea.value = phrases.join('\n');
+
+      normalModeContainer.style.display = 'none';
+      rawModeContainer.style.display = 'block';
+      rawModeToggle.textContent = '🏷️ Normal Mode';
+    } else {
+      // Switch to normal mode: parse textarea and create tags
+      const phrases = rawModeTextarea.value
+        .split('\n')
+        .map(p => p.trim())
+        .filter(Boolean);
+
+      // Clear existing tags
+      editPhraseTags.textContent = '';
+
+      // Create new tags
+      phrases.forEach(phrase => {
+        const tag = createElement('span', { className: 'phrase-tag' });
+        tag.appendChild(createText(phrase));
+        const removeBtn = createElement('button', { textContent: '×' });
+        removeBtn.addEventListener('click', () => tag.remove());
+        tag.appendChild(removeBtn);
+        editPhraseTags.appendChild(tag);
+      });
+
+      normalModeContainer.style.display = 'block';
+      rawModeContainer.style.display = 'none';
+      rawModeToggle.textContent = '📝 Raw Mode';
+    }
+  });
 
   // Button group
   const buttonGroup = createElement('div', { className: 'button-group' });
@@ -734,13 +812,29 @@ async function saveGroupFromCard(card: HTMLElement) {
   const lightTextHex = card.querySelector('.edit-group-light-text-hex') as HTMLInputElement;
   const darkBgHex = card.querySelector('.edit-group-dark-bg-hex') as HTMLInputElement;
   const darkTextHex = card.querySelector('.edit-group-dark-text-hex') as HTMLInputElement;
-  const phraseTags = card.querySelectorAll('.edit-phrase-tags .phrase-tag');
 
   const name = nameInput.value.trim();
-  const phrases = Array.from(phraseTags).map(tag => {
-    const text = tag.childNodes[0].textContent || '';
-    return text.trim();
-  }).filter(Boolean);
+
+  // Check if we're in raw mode or normal mode
+  const rawModeContainer = card.querySelector('.phrase-raw-mode') as HTMLElement;
+  const isRawMode = rawModeContainer && rawModeContainer.style.display !== 'none';
+
+  let phrases: string[];
+  if (isRawMode) {
+    // Collect phrases from textarea (raw mode)
+    const rawTextarea = card.querySelector('.phrase-raw-textarea') as HTMLTextAreaElement;
+    phrases = rawTextarea.value
+      .split('\n')
+      .map(p => p.trim())
+      .filter(Boolean);
+  } else {
+    // Collect phrases from tags (normal mode)
+    const phraseTags = card.querySelectorAll('.edit-phrase-tags .phrase-tag');
+    phrases = Array.from(phraseTags).map(tag => {
+      const text = tag.childNodes[0].textContent || '';
+      return text.trim();
+    }).filter(Boolean);
+  }
 
   if (!name || phrases.length === 0) {
     showToast('Name and at least one phrase are required', 'warning');
