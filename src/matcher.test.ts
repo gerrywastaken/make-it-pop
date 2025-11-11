@@ -1,9 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { findMatches, type PhraseMap } from './matcher';
+import { findMatches, type PhraseMap, type Match } from './matcher';
 
 const GREEN = { bgColor: '#00ff00', textColor: '#000000' };
 const BLUE = { bgColor: '#0000ff', textColor: '#ffffff' };
 const RED = { bgColor: '#ff0000', textColor: '#ffffff' };
+
+const textOf = (text: string, match: Match) => text.substring(match.start, match.end);
 
 describe('Phrase Matching - Longest Match Wins', () => {
   it('should match "Remote (US)" instead of separate "Remote" and "US" phrases', () => {
@@ -20,7 +22,7 @@ describe('Phrase Matching - Longest Match Wins', () => {
 
     // Expect: Only ONE match for the longest phrase "Remote (US)" in red
     expect(matches.length).toBe(1);
-    expect(text.substring(matches[0].start, matches[0].end)).toBe('Remote (US)');
+    expect(textOf(text, matches[0])).toBe('Remote (US)');
     expect(matches[0].bgColor).toBe(RED.bgColor);
   });
 
@@ -38,11 +40,11 @@ describe('Phrase Matching - Longest Match Wins', () => {
 
     // Expect: Three matches - compound phrase first, then individual phrases
     expect(matches.length).toBe(3);
-    expect(text.substring(matches[0].start, matches[0].end)).toBe('Remote (US)');
+    expect(textOf(text, matches[0])).toBe('Remote (US)');
     expect(matches[0].bgColor).toBe(RED.bgColor);
-    expect(text.substring(matches[1].start, matches[1].end)).toBe('remote');
+    expect(textOf(text, matches[1])).toBe('remote');
     expect(matches[1].bgColor).toBe(GREEN.bgColor);
-    expect(text.substring(matches[2].start, matches[2].end)).toBe('US');
+    expect(textOf(text, matches[2])).toBe('US');
     expect(matches[2].bgColor).toBe(BLUE.bgColor);
   });
 
@@ -91,7 +93,7 @@ describe('Phrase Matching - Longest Match Wins', () => {
     contexts.forEach(text => {
       const matches = findMatches(text, phraseMap);
       expect(matches.length).toBe(1);
-      expect(text.substring(matches[0].start, matches[0].end)).toBe('Remote (US)');
+      expect(textOf(text, matches[0])).toBe('Remote (US)');
     });
   });
 
@@ -108,7 +110,7 @@ describe('Phrase Matching - Longest Match Wins', () => {
 
     // Expect: Only "code review" matches (longest wins), not "code" separately
     expect(matches.length).toBe(1);
-    expect(text.substring(matches[0].start, matches[0].end)).toBe('code review');
+    expect(textOf(text, matches[0])).toBe('code review');
     expect(matches[0].bgColor).toBe(RED.bgColor);
   });
 });
