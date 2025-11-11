@@ -1,4 +1,4 @@
-import { findMatches, type Match } from './matcher.js';
+import { findMatches, type Match, type PhraseMap } from './matcher.js';
 
 // Inline types to avoid imports
 interface Group {
@@ -51,7 +51,7 @@ function matchesDomain(domainConfig: Domain, hostname: string): boolean {
 
 // Process ONE match at a time using atomic operations to prevent race conditions
 // The recursive traversal will naturally catch subsequent matches in the new text nodes
-function highlightTextNode(node: Text, phraseMap: Map<string, {bgColor: string, textColor: string}>, loopNumber: number) {
+function highlightTextNode(node: Text, phraseMap: PhraseMap, loopNumber: number) {
   const text = node.textContent || '';
   if (text.trim() === '') return;
 
@@ -111,7 +111,7 @@ function shouldSkipElement(element: Element): boolean {
   return false;
 }
 
-function walkTextNodes(node: Node, phraseMap: Map<string, {bgColor: string, textColor: string}>, loopNumber: number) {
+function walkTextNodes(node: Node, phraseMap: PhraseMap, loopNumber: number) {
   if (node.nodeType === Node.TEXT_NODE) {
     const parent = node.parentNode;
     if (!parent) return;
@@ -162,7 +162,7 @@ function debounce(func: Function, wait: number): Function {
 }
 
 // Global state for highlighting with concurrency control
-let globalPhraseMap: Map<string, {bgColor: string, textColor: string}> | null = null;
+let globalPhraseMap: PhraseMap | null = null;
 let globalMode: 'light' | 'dark' = 'light'; // Track current mode for styling
 let shouldHighlight = false; // Flag indicating highlight needed
 let isHighlighting = false; // Lock to prevent concurrent execution
@@ -218,7 +218,7 @@ async function highlightPage() {
   if (activeGroups.length === 0) return;
 
   const mode = matchedDomain.mode;
-  const phraseMap = new Map<string, {bgColor: string, textColor: string}>();
+  const phraseMap: PhraseMap = new Map();
 
   for (const group of activeGroups) {
     const bgColor = mode === 'dark' ? group.darkBgColor : group.lightBgColor;

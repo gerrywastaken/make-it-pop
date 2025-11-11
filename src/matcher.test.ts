@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { findMatches } from './matcher';
+import { findMatches, type PhraseMap } from './matcher';
 
 describe('Phrase Matching - Longest Match Wins', () => {
   it('should match "Remote (US)" instead of separate "Remote" and "US" phrases', () => {
     // Input: Three phrases with different colors
-    const phraseMap = new Map<string, {bgColor: string, textColor: string}>([
+    const phraseMap: PhraseMap = new Map([
       ['remote', { bgColor: '#00ff00', textColor: '#000000' }],        // green
       ['US', { bgColor: '#0000ff', textColor: '#ffffff' }],            // blue
       ['Remote (US)', { bgColor: '#ff0000', textColor: '#ffffff' }],   // red
@@ -22,7 +22,7 @@ describe('Phrase Matching - Longest Match Wins', () => {
 
   it('should prioritize longest matches when multiple phrases could match', () => {
     // Input: Three overlapping phrases, multiple occurrences in text
-    const phraseMap = new Map<string, {bgColor: string, textColor: string}>([
+    const phraseMap: PhraseMap = new Map([
       ['remote', { bgColor: '#00ff00', textColor: '#000000' }],
       ['US', { bgColor: '#0000ff', textColor: '#ffffff' }],
       ['Remote (US)', { bgColor: '#ff0000', textColor: '#ffffff' }],
@@ -44,7 +44,7 @@ describe('Phrase Matching - Longest Match Wins', () => {
 
   it('should use case-sensitive matching for all-uppercase phrases', () => {
     // Input: All-uppercase phrase "US"
-    const phraseMap = new Map<string, {bgColor: string, textColor: string}>([
+    const phraseMap: PhraseMap = new Map([
       ['US', { bgColor: '#0000ff', textColor: '#ffffff' }],
     ]);
 
@@ -60,7 +60,7 @@ describe('Phrase Matching - Longest Match Wins', () => {
 
   it('should use case-insensitive matching for mixed-case phrases', () => {
     // Input: Mixed-case phrase "Remote"
-    const phraseMap = new Map<string, {bgColor: string, textColor: string}>([
+    const phraseMap: PhraseMap = new Map([
       ['Remote', { bgColor: '#00ff00', textColor: '#000000' }],
     ]);
 
@@ -72,7 +72,7 @@ describe('Phrase Matching - Longest Match Wins', () => {
 
   it('should handle phrases with special characters and word boundaries', () => {
     // Input: Phrase with parentheses
-    const phraseMap = new Map<string, {bgColor: string, textColor: string}>([
+    const phraseMap: PhraseMap = new Map([
       ['Remote (US)', { bgColor: '#ff0000', textColor: '#ffffff' }],
     ]);
 
@@ -93,7 +93,7 @@ describe('Phrase Matching - Longest Match Wins', () => {
 
   it('should not create overlapping matches', () => {
     // Input: Overlapping phrases "code" and "code review"
-    const phraseMap = new Map<string, {bgColor: string, textColor: string}>([
+    const phraseMap: PhraseMap = new Map([
       ['code', { bgColor: '#00ff00', textColor: '#000000' }],
       ['code review', { bgColor: '#ff0000', textColor: '#ffffff' }],
     ]);

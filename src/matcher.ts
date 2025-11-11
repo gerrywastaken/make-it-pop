@@ -1,5 +1,12 @@
 // Phrase matching logic - extracted for testability
 
+export interface PhraseColors {
+  bgColor: string;
+  textColor: string;
+}
+
+export type PhraseMap = Map<string, PhraseColors>;
+
 export interface Match {
   start: number;
   end: number;
@@ -37,7 +44,7 @@ export function isAllUppercase(phrase: string): boolean {
   return letters.every(char => char === char.toUpperCase());
 }
 
-export function findMatches(text: string, phraseMap: Map<string, {bgColor: string, textColor: string}>): Match[] {
+export function findMatches(text: string, phraseMap: PhraseMap): Match[] {
   const phrases = Array.from(phraseMap.keys()).sort((a, b) => b.length - a.length);
   const matches: Match[] = [];
   const lowerText = text.toLowerCase();
