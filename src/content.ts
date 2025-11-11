@@ -135,11 +135,8 @@ function highlightTextNode(node: Text, phraseMap: Map<string, {bgColor: string, 
     const span = document.createElement('span');
     span.style.backgroundColor = match.bgColor;
     span.style.color = match.textColor;
-    span.style.padding = '1px';
-    // Use darker shadow for light mode, even darker for dark mode
-    span.style.boxShadow = globalMode === 'dark'
-      ? '1px 1px rgba(0, 0, 0, 0.5)'
-      : '1px 1px rgba(0, 0, 0, 0.2)';
+    span.style.padding = '2px 4px';
+    span.style.boxShadow = '1px 1px rgba(0, 0, 0, 0.2)';
     span.style.borderRadius = '3px';
     span.style.fontStyle = 'inherit';
     span.setAttribute('data-makeitpop-highlight', 'true');
