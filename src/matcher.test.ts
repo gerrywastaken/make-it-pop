@@ -7,6 +7,12 @@ const RED = { bgColor: '#ff0000', textColor: '#ffffff' };
 
 const textOf = (text: string, match: Match) => text.substring(match.start, match.end);
 
+const textAndColorPairs = (text: string, matches: Match[]) =>
+  matches.map(m => ({
+    text: textOf(text, m),
+    color: { bgColor: m.bgColor, textColor: m.textColor }
+  }));
+
 describe('Phrase Matching - Longest Match Wins', () => {
   it('should match "Remote (US)" instead of separate "Remote" and "US" phrases', () => {
     // Input: Three phrases with different colors
@@ -39,13 +45,11 @@ describe('Phrase Matching - Longest Match Wins', () => {
     const matches = findMatches(text, phraseMap);
 
     // Expect: Three matches - compound phrase first, then individual phrases
-    expect(matches.length).toBe(3);
-    expect(textOf(text, matches[0])).toBe('Remote (US)');
-    expect(matches[0].bgColor).toBe(RED.bgColor);
-    expect(textOf(text, matches[1])).toBe('remote');
-    expect(matches[1].bgColor).toBe(GREEN.bgColor);
-    expect(textOf(text, matches[2])).toBe('US');
-    expect(matches[2].bgColor).toBe(BLUE.bgColor);
+    expect(textAndColorPairs(text, matches)).toEqual([
+      { text: 'Remote (US)', color: RED },
+      { text: 'remote', color: GREEN },
+      { text: 'US', color: BLUE },
+    ]);
   });
 
   it('should use case-sensitive matching for all-uppercase phrases', () => {
