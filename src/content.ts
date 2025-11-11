@@ -76,6 +76,14 @@ function isWordBoundary(text: string, start: number, end: number, phrase: string
   return beforeOk && afterOk;
 }
 
+// Check if a phrase is all uppercase (all letters in the phrase are uppercase)
+// Phrases with no letters default to case-insensitive matching
+function isAllUppercase(phrase: string): boolean {
+  const letters = phrase.match(/[a-zA-Z]/g);
+  if (!letters || letters.length === 0) return false; // No letters, default to case-insensitive
+  return letters.every(char => char === char.toUpperCase());
+}
+
 function findMatches(text: string, phraseMap: Map<string, {bgColor: string, textColor: string}>): Match[] {
   const phrases = Array.from(phraseMap.keys()).sort((a, b) => b.length - a.length);
   const matches: Match[] = [];
@@ -85,8 +93,20 @@ function findMatches(text: string, phraseMap: Map<string, {bgColor: string, text
   while (position < text.length) {
     let matched = false;
     for (const phrase of phrases) {
-      const lowerPhrase = phrase.toLowerCase();
-      if (lowerText.startsWith(lowerPhrase, position)) {
+      const isUppercasePhrase = isAllUppercase(phrase);
+      let matchFound = false;
+
+      if (isUppercasePhrase) {
+        // Case-sensitive matching for all-uppercase phrases
+        const substring = text.substring(position, position + phrase.length);
+        matchFound = substring === phrase;
+      } else {
+        // Case-insensitive matching for mixed-case or lowercase phrases
+        const lowerPhrase = phrase.toLowerCase();
+        matchFound = lowerText.startsWith(lowerPhrase, position);
+      }
+
+      if (matchFound) {
         const end = position + phrase.length;
         // Check word boundaries
         if (isWordBoundary(text, position, end, phrase)) {
