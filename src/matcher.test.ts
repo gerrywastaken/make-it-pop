@@ -29,6 +29,21 @@ describe('Phrase Matching - Longest Match Wins', () => {
     ]);
   });
 
+  it('should match longest phrase regardless of map insertion order', () => {
+    const phraseMap: PhraseMap = new Map([
+      ['Remote (US)', RED],
+      ['remote', GREEN],
+      ['US', BLUE],
+    ]);
+    const text = 'London, England, GB / Remote (US) - fulltime';
+
+    const matches = findMatches(text, phraseMap);
+
+    expect(textAndColorPairs(text, matches)).toEqual([
+      { text: 'Remote (US)', color: RED },
+    ]);
+  });
+
   it('should prioritize longest matches when multiple phrases could match', () => {
     const phraseMap: PhraseMap = new Map([
       ['remote', GREEN],
