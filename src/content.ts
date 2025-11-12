@@ -290,10 +290,15 @@ async function highlightPage() {
   walkTextNodes(document.body, phraseMap, currentLoopNumber);
 
   // Set up MutationObserver for dynamic content
-  // Only process nodes that were actually added (not entire document.body)
+  // Watch for both new nodes AND text content changes (for SPA navigation)
   const observer = new MutationObserver((mutations) => {
-    // Collect added nodes, filtering out our own highlights
+    // Collect nodes that need processing
     for (const mutation of mutations) {
+      // Stop if we've hit the limit for this batch
+      if (pendingNodes.size >= MAX_PENDING_NODES) {
+        break;
+      }
+
       // Skip if mutation is from our own highlighting
       if (mutation.target.nodeType === Node.ELEMENT_NODE) {
         const element = mutation.target as Element;
@@ -302,29 +307,56 @@ async function highlightPage() {
         }
       }
 
-      // Process added nodes
-      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-        for (const node of mutation.addedNodes) {
-          // Stop if we've hit the limit for this batch
-          if (pendingNodes.size >= MAX_PENDING_NODES) {
-            break;
+      // Handle text content changes (for SPA content updates)
+      if (mutation.type === 'characterData') {
+        const textNode = mutation.target;
+        // Skip if parent is our highlight span
+        const parent = textNode.parentNode;
+        if (parent && parent.nodeType === Node.ELEMENT_NODE) {
+          const parentElement = parent as Element;
+          if (parentElement.hasAttribute?.('data-makeitpop-highlight')) {
+            continue;
           }
-
-          // Skip our own highlight spans
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const element = node as Element;
-            if (element.hasAttribute('data-makeitpop-highlight')) {
-              continue;
-            }
-          }
-          // Add to pending nodes for processing
-          pendingNodes.add(node);
+        }
+        // Add the parent element to pending (we'll walk its children)
+        if (parent) {
+          pendingNodes.add(parent);
         }
       }
 
-      // Break outer loop if we've hit the limit for this batch
-      if (pendingNodes.size >= MAX_PENDING_NODES) {
-        break;
+      // Handle new nodes being added
+      if (mutation.type === 'childList') {
+        // Process added nodes
+        if (mutation.addedNodes.length > 0) {
+          for (const node of mutation.addedNodes) {
+            // Stop if we've hit the limit for this batch
+            if (pendingNodes.size >= MAX_PENDING_NODES) {
+              break;
+            }
+
+            // Skip our own highlight spans
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              if (element.hasAttribute('data-makeitpop-highlight')) {
+                continue;
+              }
+            }
+            // Add to pending nodes for processing
+            pendingNodes.add(node);
+          }
+        }
+
+        // Also check if the mutation target itself has text content that might need highlighting
+        // This handles cases where a container's children are replaced entirely
+        if (mutation.removedNodes.length > 0 && mutation.addedNodes.length > 0) {
+          const target = mutation.target;
+          if (target.nodeType === Node.ELEMENT_NODE) {
+            const element = target as Element;
+            if (!element.hasAttribute?.('data-makeitpop-highlight')) {
+              pendingNodes.add(target);
+            }
+          }
+        }
       }
     }
 
@@ -338,7 +370,8 @@ async function highlightPage() {
   observer.observe(document.body, {
     childList: true,
     subtree: true,
-    // Don't watch characterData or attributes - we only care about new nodes
+    characterData: true, // Watch for text content changes (SPA updates)
+    characterDataOldValue: false, // We don't need the old value
   });
 }
 
