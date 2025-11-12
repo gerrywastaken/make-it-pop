@@ -15,7 +15,6 @@ const textAndColorPairs = (text: string, matches: Match[]) =>
 
 describe('Phrase Matching - Longest Match Wins', () => {
   it('should match "Remote (US)" instead of separate "Remote" and "US" phrases', () => {
-    // Input: Three phrases with different colors
     const phraseMap: PhraseMap = new Map([
       ['remote', GREEN],
       ['US', BLUE],
@@ -23,17 +22,14 @@ describe('Phrase Matching - Longest Match Wins', () => {
     ]);
     const text = 'London, England, GB / Remote (US) - fulltime';
 
-    // Run: Find matches
     const matches = findMatches(text, phraseMap);
 
-    // Expect: Only ONE match for the longest phrase "Remote (US)" in red
-    expect(matches.length).toBe(1);
-    expect(textOf(text, matches[0])).toBe('Remote (US)');
-    expect(matches[0].bgColor).toBe(RED.bgColor);
+    expect(textAndColorPairs(text, matches)).toEqual([
+      { text: 'Remote (US)', color: RED },
+    ]);
   });
 
   it('should prioritize longest matches when multiple phrases could match', () => {
-    // Input: Three overlapping phrases, multiple occurrences in text
     const phraseMap: PhraseMap = new Map([
       ['remote', GREEN],
       ['US', BLUE],
@@ -41,10 +37,8 @@ describe('Phrase Matching - Longest Match Wins', () => {
     ]);
     const text = 'Remote (US) position, also remote work in US available';
 
-    // Run: Find matches
     const matches = findMatches(text, phraseMap);
 
-    // Expect: Three matches - compound phrase first, then individual phrases
     expect(textAndColorPairs(text, matches)).toEqual([
       { text: 'Remote (US)', color: RED },
       { text: 'remote', color: GREEN },
@@ -53,68 +47,56 @@ describe('Phrase Matching - Longest Match Wins', () => {
   });
 
   it('should use case-sensitive matching for all-uppercase phrases', () => {
-    // Input: All-uppercase phrase "US"
     const phraseMap: PhraseMap = new Map([
       ['US', BLUE],
     ]);
 
-    // Run & Expect: Should match uppercase "US"
-    const matches1 = findMatches('Located in US', phraseMap);
-    expect(matches1.length).toBe(1);
-    expect(matches1[0].bgColor).toBe(BLUE.bgColor);
+    expect(textAndColorPairs('Located in US', findMatches('Located in US', phraseMap))).toEqual([
+      { text: 'US', color: BLUE },
+    ]);
 
-    // Run & Expect: Should NOT match lowercase "us"
-    const matches2 = findMatches('Tell us more', phraseMap);
-    expect(matches2.length).toBe(0);
+    expect(findMatches('Tell us more', phraseMap)).toEqual([]);
   });
 
   it('should use case-insensitive matching for mixed-case phrases', () => {
-    // Input: Mixed-case phrase "Remote"
     const phraseMap: PhraseMap = new Map([
       ['Remote', GREEN],
     ]);
 
-    // Run & Expect: Should match "remote" in lowercase text
-    const matches = findMatches('Looking for remote work', phraseMap);
-    expect(matches.length).toBe(1);
-    expect(matches[0].bgColor).toBe(GREEN.bgColor);
+    expect(textAndColorPairs('Looking for remote work', findMatches('Looking for remote work', phraseMap))).toEqual([
+      { text: 'remote', color: GREEN },
+    ]);
   });
 
   it('should handle phrases with special characters and word boundaries', () => {
-    // Input: Phrase with parentheses
     const phraseMap: PhraseMap = new Map([
       ['Remote (US)', RED],
     ]);
 
-    // Run: Find in various contexts
     const contexts = [
-      'Remote (US) only',           // At start
-      'Position: Remote (US)',      // At end
-      'Apply for Remote (US) role', // In middle
+      'Remote (US) only',
+      'Position: Remote (US)',
+      'Apply for Remote (US) role',
     ];
 
-    // Expect: Should match in all contexts
     contexts.forEach(text => {
-      const matches = findMatches(text, phraseMap);
-      expect(matches.length).toBe(1);
-      expect(textOf(text, matches[0])).toBe('Remote (US)');
+      expect(textAndColorPairs(text, findMatches(text, phraseMap))).toEqual([
+        { text: 'Remote (US)', color: RED },
+      ]);
     });
   });
 
   it('should not create overlapping matches', () => {
-    // Input: Overlapping phrases "code" and "code review"
     const phraseMap: PhraseMap = new Map([
       ['code', GREEN],
       ['code review', RED],
     ]);
     const text = 'Please do a code review';
 
-    // Run: Find matches
     const matches = findMatches(text, phraseMap);
 
-    // Expect: Only "code review" matches (longest wins), not "code" separately
-    expect(matches.length).toBe(1);
-    expect(textOf(text, matches[0])).toBe('code review');
-    expect(matches[0].bgColor).toBe(RED.bgColor);
+    expect(textAndColorPairs(text, matches)).toEqual([
+      { text: 'code review', color: RED },
+    ]);
   });
 });
