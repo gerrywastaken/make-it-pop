@@ -152,90 +152,41 @@ function walkTextNodes(node: Node, phraseMap: PhraseMap, loopNumber: number) {
   }
 }
 
-// Throttle + debounce combo for better performance
-// Guarantees: runs at most once per throttleMs, AND runs debounceMs after last call
-function throttleAndDebounce(func: Function, throttleMs: number, debounceMs: number) {
-  let throttleTimeout: number | null = null;
-  let debounceTimeout: number | null = null;
-  let lastRan = 0;
-
+// Debounce utility - simpler approach for better reliability
+function debounce(func: Function, wait: number): Function {
+  let timeout: number | undefined;
   return function(...args: any[]) {
-    const now = Date.now();
-    const timeSinceLastRun = now - lastRan;
-
-    // Clear any pending debounce (we'll set a new one)
-    if (debounceTimeout !== null) {
-      clearTimeout(debounceTimeout);
-      debounceTimeout = null;
-    }
-
-    // If throttle period has passed, run immediately
-    if (timeSinceLastRun >= throttleMs) {
-      if (throttleTimeout !== null) {
-        clearTimeout(throttleTimeout);
-        throttleTimeout = null;
-      }
-      lastRan = now;
-      func(...args);
-    } else {
-      // We're in throttle period - ensure we run when throttle period ends
-      // Only set throttle timeout if one isn't already pending
-      if (throttleTimeout === null) {
-        const remainingThrottle = throttleMs - timeSinceLastRun;
-        throttleTimeout = window.setTimeout(() => {
-          throttleTimeout = null;
-          lastRan = Date.now();
-          func(...args);
-        }, remainingThrottle);
-      }
-    }
-
-    // Always set debounce for final call after activity stops
-    debounceTimeout = window.setTimeout(() => {
-      debounceTimeout = null;
-      const nowDebounce = Date.now();
-      // Only run if enough time has passed since last execution
-      if (nowDebounce - lastRan >= debounceMs) {
-        lastRan = nowDebounce;
-        func(...args);
-      }
-    }, debounceMs);
+    clearTimeout(timeout);
+    timeout = window.setTimeout(() => func(...args), wait);
   };
 }
 
 // Global state for highlighting with concurrency control
 let globalPhraseMap: PhraseMap | null = null;
-let globalMode: 'light' | 'dark' = 'light'; // Track current mode for styling
+let globalMode: 'light' | 'dark' = 'light';
 let isHighlighting = false; // Lock to prevent concurrent execution
 let currentLoopNumber = 0; // Unique ID for each highlighting pass
-let pendingNodes: Set<Node> = new Set(); // Nodes that need processing
-const MAX_PENDING_NODES = 500; // Limit to prevent memory issues on massive DOM updates
+let mutationsPending = false; // Flag indicating content has changed
 
-function highlightPendingNodes() {
-  if (!globalPhraseMap || isHighlighting || pendingNodes.size === 0) return;
+function highlightAll() {
+  if (!globalPhraseMap || isHighlighting || !mutationsPending) return;
 
   isHighlighting = true;
-  currentLoopNumber++; // Increment instead of random number to reduce GC
+  mutationsPending = false; // Clear flag before processing
+  currentLoopNumber++; // Increment for this pass
 
   try {
-    // Process all pending nodes
-    const nodesToProcess = Array.from(pendingNodes);
-    pendingNodes.clear();
-
-    for (const node of nodesToProcess) {
-      // Check if node is still in the document
-      if (document.contains(node)) {
-        walkTextNodes(node, globalPhraseMap, currentLoopNumber);
-      }
-    }
+    // Scan entire document.body - simpler and more reliable than tracking individual nodes
+    // The walkTextNodes function already skips our own highlights and previously processed content
+    walkTextNodes(document.body, globalPhraseMap, currentLoopNumber);
   } finally {
     isHighlighting = false;
   }
 }
 
-// Use throttle + debounce: max once per 500ms, with 1 second debounce
-// This balances responsiveness with performance on dynamic sites
-const debouncedHighlight = throttleAndDebounce(highlightPendingNodes, 500, 1000);
+// Simple debounce: wait for mutations to stop, then highlight everything
+// 1500ms provides good balance - responsive but not too aggressive
+const debouncedHighlight = debounce(highlightAll, 1500);
 
 async function highlightPage() {
   // Check if extension is enabled
@@ -292,77 +243,58 @@ async function highlightPage() {
   // Set up MutationObserver for dynamic content
   // Watch for both new nodes AND text content changes (for SPA navigation)
   const observer = new MutationObserver((mutations) => {
-    // Collect nodes that need processing
-    for (const mutation of mutations) {
-      // Stop if we've hit the limit for this batch
-      if (pendingNodes.size >= MAX_PENDING_NODES) {
-        break;
-      }
+    // Simple approach: if ANY relevant mutation occurs, set flag and debounce
+    let hasRelevantMutation = false;
 
-      // Skip if mutation is from our own highlighting
+    for (const mutation of mutations) {
+      // Skip mutations from our own highlighting spans
       if (mutation.target.nodeType === Node.ELEMENT_NODE) {
         const element = mutation.target as Element;
         if (element.hasAttribute?.('data-makeitpop-highlight')) {
-          continue; // Skip mutations inside our highlights
+          continue;
         }
       }
 
-      // Handle text content changes (for SPA content updates)
+      // Check if this is a relevant mutation (content change)
       if (mutation.type === 'characterData') {
-        const textNode = mutation.target;
-        // Skip if parent is our highlight span
-        const parent = textNode.parentNode;
+        // Text content changed - check parent isn't our highlight
+        const parent = mutation.target.parentNode;
         if (parent && parent.nodeType === Node.ELEMENT_NODE) {
           const parentElement = parent as Element;
           if (parentElement.hasAttribute?.('data-makeitpop-highlight')) {
             continue;
           }
         }
-        // Add the parent element to pending (we'll walk its children)
-        if (parent) {
-          pendingNodes.add(parent);
-        }
-      }
-
-      // Handle new nodes being added
-      if (mutation.type === 'childList') {
-        // Process added nodes
+        hasRelevantMutation = true;
+        break; // No need to check more mutations
+      } else if (mutation.type === 'childList') {
+        // Nodes added or removed - check if it's not just our highlights
         if (mutation.addedNodes.length > 0) {
           for (const node of mutation.addedNodes) {
-            // Stop if we've hit the limit for this batch
-            if (pendingNodes.size >= MAX_PENDING_NODES) {
-              break;
-            }
-
-            // Skip our own highlight spans
             if (node.nodeType === Node.ELEMENT_NODE) {
               const element = node as Element;
-              if (element.hasAttribute('data-makeitpop-highlight')) {
+              if (element.hasAttribute?.('data-makeitpop-highlight')) {
                 continue;
               }
             }
-            // Add to pending nodes for processing
-            pendingNodes.add(node);
+            // Found a non-highlight node being added
+            hasRelevantMutation = true;
+            break;
           }
         }
+        if (hasRelevantMutation) break;
 
-        // Also check if the mutation target itself has text content that might need highlighting
-        // This handles cases where a container's children are replaced entirely
-        if (mutation.removedNodes.length > 0 && mutation.addedNodes.length > 0) {
-          const target = mutation.target;
-          if (target.nodeType === Node.ELEMENT_NODE) {
-            const element = target as Element;
-            if (!element.hasAttribute?.('data-makeitpop-highlight')) {
-              pendingNodes.add(target);
-            }
-          }
+        // Check removed nodes (content being replaced)
+        if (mutation.removedNodes.length > 0) {
+          hasRelevantMutation = true;
+          break;
         }
       }
     }
 
-    // ALWAYS trigger highlighting if we have pending nodes, even if we hit the limit
-    // The throttle+debounce will prevent excessive processing
-    if (pendingNodes.size > 0) {
+    // If we detected relevant changes, set flag and trigger debounced highlight
+    if (hasRelevantMutation) {
+      mutationsPending = true;
       debouncedHighlight();
     }
   });
