@@ -153,8 +153,7 @@ function walkTextNodes(node: Node, phraseMap: PhraseMap, loopNumber: number) {
 }
 
 // Throttle + debounce combo for better performance
-// Throttle ensures function doesn't run more than once per `limit` ms
-// Debounce ensures final call happens after activity stops
+// Guarantees: runs at most once per throttleMs, AND runs debounceMs after last call
 function throttleAndDebounce(func: Function, throttleMs: number, debounceMs: number) {
   let throttleTimeout: number | null = null;
   let debounceTimeout: number | null = null;
@@ -162,29 +161,42 @@ function throttleAndDebounce(func: Function, throttleMs: number, debounceMs: num
 
   return function(...args: any[]) {
     const now = Date.now();
+    const timeSinceLastRun = now - lastRan;
 
-    // Clear any pending debounce
+    // Clear any pending debounce (we'll set a new one)
     if (debounceTimeout !== null) {
       clearTimeout(debounceTimeout);
+      debounceTimeout = null;
     }
 
-    // If throttle period hasn't passed, just set debounce
-    if (now - lastRan < throttleMs) {
-      debounceTimeout = window.setTimeout(() => {
-        lastRan = Date.now();
-        func(...args);
-      }, debounceMs);
-      return;
+    // If throttle period has passed, run immediately
+    if (timeSinceLastRun >= throttleMs) {
+      if (throttleTimeout !== null) {
+        clearTimeout(throttleTimeout);
+        throttleTimeout = null;
+      }
+      lastRan = now;
+      func(...args);
+    } else {
+      // We're in throttle period - ensure we run when throttle period ends
+      // Only set throttle timeout if one isn't already pending
+      if (throttleTimeout === null) {
+        const remainingThrottle = throttleMs - timeSinceLastRun;
+        throttleTimeout = window.setTimeout(() => {
+          throttleTimeout = null;
+          lastRan = Date.now();
+          func(...args);
+        }, remainingThrottle);
+      }
     }
 
-    // Throttle period has passed, run immediately
-    lastRan = now;
-    func(...args);
-
-    // Still set debounce for final call
+    // Always set debounce for final call after activity stops
     debounceTimeout = window.setTimeout(() => {
-      if (Date.now() - lastRan >= debounceMs) {
-        lastRan = Date.now();
+      debounceTimeout = null;
+      const nowDebounce = Date.now();
+      // Only run if enough time has passed since last execution
+      if (nowDebounce - lastRan >= debounceMs) {
+        lastRan = nowDebounce;
         func(...args);
       }
     }, debounceMs);
@@ -197,7 +209,7 @@ let globalMode: 'light' | 'dark' = 'light'; // Track current mode for styling
 let isHighlighting = false; // Lock to prevent concurrent execution
 let currentLoopNumber = 0; // Unique ID for each highlighting pass
 let pendingNodes: Set<Node> = new Set(); // Nodes that need processing
-const MAX_PENDING_NODES = 100; // Limit to prevent memory issues on massive DOM updates
+const MAX_PENDING_NODES = 500; // Limit to prevent memory issues on massive DOM updates
 
 function highlightPendingNodes() {
   if (!globalPhraseMap || isHighlighting || pendingNodes.size === 0) return;
@@ -221,8 +233,9 @@ function highlightPendingNodes() {
   }
 }
 
-// Use throttle + debounce: max once per second, with 2 second debounce
-const debouncedHighlight = throttleAndDebounce(highlightPendingNodes, 1000, 2000);
+// Use throttle + debounce: max once per 500ms, with 1 second debounce
+// This balances responsiveness with performance on dynamic sites
+const debouncedHighlight = throttleAndDebounce(highlightPendingNodes, 500, 1000);
 
 async function highlightPage() {
   // Check if extension is enabled
@@ -279,12 +292,6 @@ async function highlightPage() {
   // Set up MutationObserver for dynamic content
   // Only process nodes that were actually added (not entire document.body)
   const observer = new MutationObserver((mutations) => {
-    // If we're already at max capacity, skip adding more nodes
-    // This prevents memory issues on sites with extreme DOM churn
-    if (pendingNodes.size >= MAX_PENDING_NODES) {
-      return;
-    }
-
     // Collect added nodes, filtering out our own highlights
     for (const mutation of mutations) {
       // Skip if mutation is from our own highlighting
@@ -298,7 +305,7 @@ async function highlightPage() {
       // Process added nodes
       if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
         for (const node of mutation.addedNodes) {
-          // Stop if we've hit the limit
+          // Stop if we've hit the limit for this batch
           if (pendingNodes.size >= MAX_PENDING_NODES) {
             break;
           }
@@ -315,13 +322,14 @@ async function highlightPage() {
         }
       }
 
-      // Break outer loop if we've hit the limit
+      // Break outer loop if we've hit the limit for this batch
       if (pendingNodes.size >= MAX_PENDING_NODES) {
         break;
       }
     }
 
-    // Trigger debounced highlighting if we have pending nodes
+    // ALWAYS trigger highlighting if we have pending nodes, even if we hit the limit
+    // The throttle+debounce will prevent excessive processing
     if (pendingNodes.size > 0) {
       debouncedHighlight();
     }
