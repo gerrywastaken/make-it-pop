@@ -1,3 +1,5 @@
+import { findMatches, type Match, type PhraseMap } from './matcher.js';
+
 // Inline types to avoid imports
 interface Group {
   id: string;
@@ -47,91 +49,9 @@ function matchesDomain(domainConfig: Domain, hostname: string): boolean {
   }
 }
 
-interface Match {
-  start: number;
-  end: number;
-  bgColor: string;
-  textColor: string;
-}
-
-// Check if a character is a word character (alphanumeric or underscore)
-function isWordChar(char: string): boolean {
-  return /\w/.test(char);
-}
-
-// Check if match is at a word boundary
-// Only enforces boundaries if the phrase itself starts/ends with word characters
-function isWordBoundary(text: string, start: number, end: number, phrase: string): boolean {
-  const charBefore = start > 0 ? text[start - 1] : '';
-  const charAfter = end < text.length ? text[end] : '';
-
-  // Only check start boundary if phrase starts with a word character
-  const phraseStartsWithWord = isWordChar(phrase[0]);
-  const beforeOk = !phraseStartsWithWord || start === 0 || !isWordChar(charBefore);
-
-  // Only check end boundary if phrase ends with a word character
-  const phraseEndsWithWord = isWordChar(phrase[phrase.length - 1]);
-  const afterOk = !phraseEndsWithWord || end === text.length || !isWordChar(charAfter);
-
-  return beforeOk && afterOk;
-}
-
-// Check if a phrase is all uppercase (all letters in the phrase are uppercase)
-// Phrases with no letters default to case-insensitive matching
-function isAllUppercase(phrase: string): boolean {
-  const letters = phrase.match(/[a-zA-Z]/g);
-  if (!letters || letters.length === 0) return false; // No letters, default to case-insensitive
-  return letters.every(char => char === char.toUpperCase());
-}
-
-function findMatches(text: string, phraseMap: Map<string, {bgColor: string, textColor: string}>): Match[] {
-  const phrases = Array.from(phraseMap.keys()).sort((a, b) => b.length - a.length);
-  const matches: Match[] = [];
-  const lowerText = text.toLowerCase();
-
-  let position = 0;
-  while (position < text.length) {
-    let matched = false;
-    for (const phrase of phrases) {
-      const isUppercasePhrase = isAllUppercase(phrase);
-      let matchFound = false;
-
-      if (isUppercasePhrase) {
-        // Case-sensitive matching for all-uppercase phrases
-        const substring = text.substring(position, position + phrase.length);
-        matchFound = substring === phrase;
-      } else {
-        // Case-insensitive matching for mixed-case or lowercase phrases
-        const lowerPhrase = phrase.toLowerCase();
-        matchFound = lowerText.startsWith(lowerPhrase, position);
-      }
-
-      if (matchFound) {
-        const end = position + phrase.length;
-        // Check word boundaries
-        if (isWordBoundary(text, position, end, phrase)) {
-          const colors = phraseMap.get(phrase)!;
-          matches.push({
-            start: position,
-            end: end,
-            bgColor: colors.bgColor,
-            textColor: colors.textColor,
-          });
-          position += phrase.length;
-          matched = true;
-          break;
-        }
-      }
-    }
-    if (!matched) position++;
-  }
-
-  return matches;
-}
-
 // Process ONE match at a time using atomic operations to prevent race conditions
 // The recursive traversal will naturally catch subsequent matches in the new text nodes
-function highlightTextNode(node: Text, phraseMap: Map<string, {bgColor: string, textColor: string}>, loopNumber: number) {
+function highlightTextNode(node: Text, phraseMap: PhraseMap, loopNumber: number) {
   const text = node.textContent || '';
   if (text.trim() === '') return;
 
@@ -191,7 +111,7 @@ function shouldSkipElement(element: Element): boolean {
   return false;
 }
 
-function walkTextNodes(node: Node, phraseMap: Map<string, {bgColor: string, textColor: string}>, loopNumber: number) {
+function walkTextNodes(node: Node, phraseMap: PhraseMap, loopNumber: number) {
   if (node.nodeType === Node.TEXT_NODE) {
     const parent = node.parentNode;
     if (!parent) return;
@@ -242,7 +162,7 @@ function debounce(func: Function, wait: number): Function {
 }
 
 // Global state for highlighting with concurrency control
-let globalPhraseMap: Map<string, {bgColor: string, textColor: string}> | null = null;
+let globalPhraseMap: PhraseMap | null = null;
 let globalMode: 'light' | 'dark' = 'light'; // Track current mode for styling
 let shouldHighlight = false; // Flag indicating highlight needed
 let isHighlighting = false; // Lock to prevent concurrent execution
@@ -298,7 +218,7 @@ async function highlightPage() {
   if (activeGroups.length === 0) return;
 
   const mode = matchedDomain.mode;
-  const phraseMap = new Map<string, {bgColor: string, textColor: string}>();
+  const phraseMap: PhraseMap = new Map();
 
   for (const group of activeGroups) {
     const bgColor = mode === 'dark' ? group.darkBgColor : group.lightBgColor;
