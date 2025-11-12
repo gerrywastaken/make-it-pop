@@ -82,7 +82,7 @@ If we ever change this privacy policy, we will:
 
 ## Contact
 
-If you have questions about this privacy policy or data handling, please open an issue on our GitHub repository.
+If you have questions about this privacy policy or data handling, please open an issue on our GitHub repository or [reach out to me on X](https://x.com/gerry).
 
 ---
 
