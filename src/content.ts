@@ -152,37 +152,77 @@ function walkTextNodes(node: Node, phraseMap: PhraseMap, loopNumber: number) {
   }
 }
 
-// Debounce utility
-function debounce(func: Function, wait: number): Function {
-  let timeout: number;
+// Throttle + debounce combo for better performance
+// Throttle ensures function doesn't run more than once per `limit` ms
+// Debounce ensures final call happens after activity stops
+function throttleAndDebounce(func: Function, throttleMs: number, debounceMs: number) {
+  let throttleTimeout: number | null = null;
+  let debounceTimeout: number | null = null;
+  let lastRan = 0;
+
   return function(...args: any[]) {
-    clearTimeout(timeout);
-    timeout = window.setTimeout(() => func(...args), wait);
+    const now = Date.now();
+
+    // Clear any pending debounce
+    if (debounceTimeout !== null) {
+      clearTimeout(debounceTimeout);
+    }
+
+    // If throttle period hasn't passed, just set debounce
+    if (now - lastRan < throttleMs) {
+      debounceTimeout = window.setTimeout(() => {
+        lastRan = Date.now();
+        func(...args);
+      }, debounceMs);
+      return;
+    }
+
+    // Throttle period has passed, run immediately
+    lastRan = now;
+    func(...args);
+
+    // Still set debounce for final call
+    debounceTimeout = window.setTimeout(() => {
+      if (Date.now() - lastRan >= debounceMs) {
+        lastRan = Date.now();
+        func(...args);
+      }
+    }, debounceMs);
   };
 }
 
 // Global state for highlighting with concurrency control
 let globalPhraseMap: PhraseMap | null = null;
 let globalMode: 'light' | 'dark' = 'light'; // Track current mode for styling
-let shouldHighlight = false; // Flag indicating highlight needed
 let isHighlighting = false; // Lock to prevent concurrent execution
 let currentLoopNumber = 0; // Unique ID for each highlighting pass
+let pendingNodes: Set<Node> = new Set(); // Nodes that need processing
+const MAX_PENDING_NODES = 100; // Limit to prevent memory issues on massive DOM updates
 
-function highlightNewContent() {
-  if (!globalPhraseMap || isHighlighting) return;
+function highlightPendingNodes() {
+  if (!globalPhraseMap || isHighlighting || pendingNodes.size === 0) return;
 
   isHighlighting = true;
-  shouldHighlight = false;
-  currentLoopNumber = Math.floor(Math.random() * 1000000000); // Random loop ID to track this pass
+  currentLoopNumber++; // Increment instead of random number to reduce GC
 
   try {
-    walkTextNodes(document.body, globalPhraseMap, currentLoopNumber);
+    // Process all pending nodes
+    const nodesToProcess = Array.from(pendingNodes);
+    pendingNodes.clear();
+
+    for (const node of nodesToProcess) {
+      // Check if node is still in the document
+      if (document.contains(node)) {
+        walkTextNodes(node, globalPhraseMap, currentLoopNumber);
+      }
+    }
   } finally {
     isHighlighting = false;
   }
 }
 
-const debouncedHighlight = debounce(highlightNewContent, 3000);
+// Use throttle + debounce: max once per second, with 2 second debounce
+const debouncedHighlight = throttleAndDebounce(highlightPendingNodes, 1000, 2000);
 
 async function highlightPage() {
   // Check if extension is enabled
@@ -233,19 +273,64 @@ async function highlightPage() {
   globalMode = mode; // Store mode globally for styling
 
   // Initial highlight
-  currentLoopNumber = Math.floor(Math.random() * 1000000000);
+  currentLoopNumber = 0;
   walkTextNodes(document.body, phraseMap, currentLoopNumber);
 
   // Set up MutationObserver for dynamic content
-  // Observer just sets flag, debounced function does actual work to avoid excessive re-highlights
+  // Only process nodes that were actually added (not entire document.body)
   const observer = new MutationObserver((mutations) => {
-    shouldHighlight = true;
-    debouncedHighlight();
+    // If we're already at max capacity, skip adding more nodes
+    // This prevents memory issues on sites with extreme DOM churn
+    if (pendingNodes.size >= MAX_PENDING_NODES) {
+      return;
+    }
+
+    // Collect added nodes, filtering out our own highlights
+    for (const mutation of mutations) {
+      // Skip if mutation is from our own highlighting
+      if (mutation.target.nodeType === Node.ELEMENT_NODE) {
+        const element = mutation.target as Element;
+        if (element.hasAttribute?.('data-makeitpop-highlight')) {
+          continue; // Skip mutations inside our highlights
+        }
+      }
+
+      // Process added nodes
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        for (const node of mutation.addedNodes) {
+          // Stop if we've hit the limit
+          if (pendingNodes.size >= MAX_PENDING_NODES) {
+            break;
+          }
+
+          // Skip our own highlight spans
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as Element;
+            if (element.hasAttribute('data-makeitpop-highlight')) {
+              continue;
+            }
+          }
+          // Add to pending nodes for processing
+          pendingNodes.add(node);
+        }
+      }
+
+      // Break outer loop if we've hit the limit
+      if (pendingNodes.size >= MAX_PENDING_NODES) {
+        break;
+      }
+    }
+
+    // Trigger debounced highlighting if we have pending nodes
+    if (pendingNodes.size > 0) {
+      debouncedHighlight();
+    }
   });
 
   observer.observe(document.body, {
     childList: true,
     subtree: true,
+    // Don't watch characterData or attributes - we only care about new nodes
   });
 }
 

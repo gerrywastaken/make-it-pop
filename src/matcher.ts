@@ -44,8 +44,42 @@ export function isAllUppercase(phrase: string): boolean {
   return letters.every(char => char === char.toUpperCase());
 }
 
-export function findMatches(text: string, phraseMap: PhraseMap): Match[] {
+// Cache for sorted phrases to avoid recreating array on every call
+interface CachedPhraseData {
+  phrases: string[];  // Pre-sorted by length (descending)
+  lowercasePhrases: Map<string, string>;  // Cache of phrase -> lowercase
+  uppercasePhrases: Set<string>;  // Set of all-uppercase phrases
+}
+
+let phraseCache: CachedPhraseData | null = null;
+let lastPhraseMap: PhraseMap | null = null;
+
+export function buildPhraseCache(phraseMap: PhraseMap): CachedPhraseData {
   const phrases = Array.from(phraseMap.keys()).sort((a, b) => b.length - a.length);
+  const lowercasePhrases = new Map<string, string>();
+  const uppercasePhrases = new Set<string>();
+
+  for (const phrase of phrases) {
+    if (isAllUppercase(phrase)) {
+      uppercasePhrases.add(phrase);
+    } else {
+      lowercasePhrases.set(phrase, phrase.toLowerCase());
+    }
+  }
+
+  return { phrases, lowercasePhrases, uppercasePhrases };
+}
+
+export function findMatches(text: string, phraseMap: PhraseMap): Match[] {
+  // Update cache if phraseMap changed
+  if (phraseMap !== lastPhraseMap) {
+    phraseCache = buildPhraseCache(phraseMap);
+    lastPhraseMap = phraseMap;
+  }
+
+  if (!phraseCache) return [];
+
+  const { phrases, lowercasePhrases, uppercasePhrases } = phraseCache;
   const matches: Match[] = [];
   const lowerText = text.toLowerCase();
 
@@ -53,7 +87,7 @@ export function findMatches(text: string, phraseMap: PhraseMap): Match[] {
   while (position < text.length) {
     let matched = false;
     for (const phrase of phrases) {
-      const isUppercasePhrase = isAllUppercase(phrase);
+      const isUppercasePhrase = uppercasePhrases.has(phrase);
       let matchFound = false;
 
       if (isUppercasePhrase) {
@@ -62,7 +96,7 @@ export function findMatches(text: string, phraseMap: PhraseMap): Match[] {
         matchFound = substring === phrase;
       } else {
         // Case-insensitive matching for mixed-case or lowercase phrases
-        const lowerPhrase = phrase.toLowerCase();
+        const lowerPhrase = lowercasePhrases.get(phrase)!;
         matchFound = lowerText.startsWith(lowerPhrase, position);
       }
 
