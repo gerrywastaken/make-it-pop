@@ -208,16 +208,35 @@ Before writing a test, ask: **"If I deleted this test, would I lose sleep?"**
 - "If highlighting stops working on dynamic sites" → Would lose sleep → Write test
 - "If we switch from MutationObserver to polling" → Wouldn't lose sleep → Don't test implementation
 
-### When Manual Testing Is Better
+### Code Must Be Made Testable
 
-Sometimes the right answer is **no automated test**:
+If you can't write a test because the code isn't testable, **refactor it**.
 
-- Code isn't designed to be testable (would require significant refactoring)
-- The refactoring cost exceeds the test benefit
-- Manual testing on real sites (like LinkedIn) provides better confidence
-- The test would be so complex it becomes maintenance burden
+**Common excuses (all wrong):**
+- ❌ "Code isn't designed to be testable" → Refactor it to be testable
+- ❌ "Refactoring cost exceeds test benefit" → No it doesn't, you need this test
+- ❌ "Manual testing provides better confidence" → No it doesn't, humans forget
+- ❌ "Test would be too complex" → Simplify the code first, then test
 
-**Remember:** Tests are tools, not goals. Don't write tests for test's sake.
+**The right approach:**
+1. Identify critical behavior that needs testing
+2. If code isn't testable, refactor it (extract classes, dependency injection, etc.)
+3. Write the test
+4. The refactoring cost is an investment that pays back every time the test runs
+
+**Example from this codebase:**
+- Problem: content.ts was untestable (auto-executed, global state, no exports)
+- Solution: Extract Highlighter class, make it instantiable, accept dependencies
+- Result: Critical SPA regression test now prevents bugs from reoccurring
+- The refactoring made the code BETTER, not just testable
+
+**Manual testing is only acceptable for:**
+- One-off exploratory testing during development
+- Checking visual appearance (colors, layouts)
+- Verifying behavior on specific browsers/devices
+- Anything a test can verify should have an automated test
+
+**Remember:** If it's important enough to test manually, it's important enough to test automatically.
 
 ## Testing Philosophy Checklist
 
