@@ -168,6 +168,76 @@ it('should handle phrases with special characters and word boundaries', () => {
 
 You can see all the test cases in one list, and the expected result is the same for all.
 
+## Tests Must Fight For Their Existence
+
+Not all code needs tests. Every test must justify its existence by providing **clear net value**.
+
+### ✅ Tests Worth Writing
+
+These tests protect against real breakage:
+
+1. **Core functionality** - "Does the main feature work at all?"
+2. **Regression tests** - "Does the bug we just fixed stay fixed?"
+3. **Stable contracts** - "Do our public APIs work as documented?"
+
+Example: If your matcher should prioritize "code review" over "code", test that. If it breaks, users will notice immediately.
+
+### ❌ Tests Not Worth Writing
+
+These tests are noise that hides meaningful tests:
+
+1. **Implementation details** - Testing HOW code works, not WHAT it does
+   - ❌ "Does MutationObserver fire when DOM changes?"
+   - ❌ "Is the cache being used?"
+   - ❌ "Does the debounce function delay execution?"
+
+2. **Already-tested behavior** - Redundant tests add maintenance cost without benefit
+   - If matcher.test.ts already tests longest-match logic, don't test it again in integration tests
+
+3. **Unstable internals** - Tests that break when you refactor
+   - If you could swap MutationObserver for polling and the behavior is identical, you're testing the wrong thing
+
+### The Hard Question
+
+Before writing a test, ask: **"If I deleted this test, would I lose sleep?"**
+
+- If yes → The test is protecting something valuable
+- If no → The test is noise
+
+**Example:**
+- "If highlighting stops working on dynamic sites" → Would lose sleep → Write test
+- "If we switch from MutationObserver to polling" → Wouldn't lose sleep → Don't test implementation
+
+### Code Must Be Made Testable
+
+If you can't write a test because the code isn't testable, **refactor it**.
+
+**Common excuses (all wrong):**
+- ❌ "Code isn't designed to be testable" → Refactor it to be testable
+- ❌ "Refactoring cost exceeds test benefit" → No it doesn't, you need this test
+- ❌ "Manual testing provides better confidence" → No it doesn't, humans forget
+- ❌ "Test would be too complex" → Simplify the code first, then test
+
+**The right approach:**
+1. Identify critical behavior that needs testing
+2. If code isn't testable, refactor it (extract classes, dependency injection, etc.)
+3. Write the test
+4. The refactoring cost is an investment that pays back every time the test runs
+
+**Example from this codebase:**
+- Problem: content.ts was untestable (auto-executed, global state, no exports)
+- Solution: Extract Highlighter class, make it instantiable, accept dependencies
+- Result: Critical SPA regression test now prevents bugs from reoccurring
+- The refactoring made the code BETTER, not just testable
+
+**Manual testing is only acceptable for:**
+- One-off exploratory testing during development
+- Checking visual appearance (colors, layouts)
+- Verifying behavior on specific browsers/devices
+- Anything a test can verify should have an automated test
+
+**Remember:** If it's important enough to test manually, it's important enough to test automatically.
+
 ## Testing Philosophy Checklist
 
 Before committing a test, ask yourself:
@@ -178,6 +248,7 @@ Before committing a test, ask yourself:
 - [ ] Does the test tell a clear story: input → run → expect?
 - [ ] Could I remove all the comments and still understand what's being tested?
 - [ ] If this test fails, will the error message show me exactly what's wrong?
+- [ ] **Would I lose sleep if this test didn't exist?** ← The most important question
 
 ## Remember
 

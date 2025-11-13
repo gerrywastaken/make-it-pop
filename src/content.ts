@@ -50,7 +50,7 @@ function matchesDomain(domainConfig: Domain, hostname: string): boolean {
 }
 
 // Process ONE match at a time using atomic operations to prevent race conditions
-// The recursive traversal will naturally catch subsequent matches in the new text nodes
+// Recursively process the remaining text after each highlight
 function highlightTextNode(node: Text, phraseMap: PhraseMap, loopNumber: number) {
   const text = node.textContent || '';
   if (text.trim() === '') return;
@@ -85,6 +85,9 @@ function highlightTextNode(node: Text, phraseMap: PhraseMap, loopNumber: number)
 
     // Insert highlight between the two text nodes (atomic operation)
     parent.insertBefore(span, after);
+
+    // Recursively process the remaining text node for more matches
+    highlightTextNode(after, phraseMap, loopNumber);
   } catch (e) {
     // Node was removed by framework during operation - bail out gracefully
     return;
@@ -152,37 +155,122 @@ function walkTextNodes(node: Node, phraseMap: PhraseMap, loopNumber: number) {
   }
 }
 
-// Debounce utility
+// Debounce utility - simpler approach for better reliability
 function debounce(func: Function, wait: number): Function {
-  let timeout: number;
+  let timeout: number | undefined;
   return function(...args: any[]) {
     clearTimeout(timeout);
     timeout = window.setTimeout(() => func(...args), wait);
   };
 }
 
-// Global state for highlighting with concurrency control
-let globalPhraseMap: PhraseMap | null = null;
-let globalMode: 'light' | 'dark' = 'light'; // Track current mode for styling
-let shouldHighlight = false; // Flag indicating highlight needed
-let isHighlighting = false; // Lock to prevent concurrent execution
-let currentLoopNumber = 0; // Unique ID for each highlighting pass
+// Highlighter class - extracted for testability
+export class Highlighter {
+  private phraseMap: PhraseMap | null = null;
+  private mode: 'light' | 'dark' = 'light';
+  private isHighlighting = false;
+  private currentLoopNumber = 0;
+  private mutationsPending = false;
+  private observer: MutationObserver | null = null;
+  private debouncedHighlight: Function;
+  private rootElement: HTMLElement;
 
-function highlightNewContent() {
-  if (!globalPhraseMap || isHighlighting) return;
+  constructor(rootElement: HTMLElement = document.body, debounceMs: number = 1500) {
+    this.rootElement = rootElement;
+    this.debouncedHighlight = debounce(() => this.highlightAll(), debounceMs);
+  }
 
-  isHighlighting = true;
-  shouldHighlight = false;
-  currentLoopNumber = Math.floor(Math.random() * 1000000000); // Random loop ID to track this pass
+  setPhrases(phraseMap: PhraseMap, mode: 'light' | 'dark') {
+    this.phraseMap = phraseMap;
+    this.mode = mode;
+  }
 
-  try {
-    walkTextNodes(document.body, globalPhraseMap, currentLoopNumber);
-  } finally {
-    isHighlighting = false;
+  private highlightAll() {
+    if (!this.phraseMap || this.isHighlighting || !this.mutationsPending) return;
+
+    this.isHighlighting = true;
+    this.mutationsPending = false;
+    this.currentLoopNumber++;
+
+    try {
+      walkTextNodes(this.rootElement, this.phraseMap, this.currentLoopNumber);
+    } finally {
+      this.isHighlighting = false;
+    }
+  }
+
+  start() {
+    if (!this.phraseMap) return;
+
+    // Initial highlight
+    this.currentLoopNumber = 0;
+    walkTextNodes(this.rootElement, this.phraseMap, this.currentLoopNumber);
+
+    // Set up MutationObserver
+    this.observer = new MutationObserver((mutations) => {
+      let hasRelevantMutation = false;
+
+      for (const mutation of mutations) {
+        if (mutation.target.nodeType === Node.ELEMENT_NODE) {
+          const element = mutation.target as Element;
+          if (element.hasAttribute?.('data-makeitpop-highlight')) {
+            continue;
+          }
+        }
+
+        if (mutation.type === 'characterData') {
+          const parent = mutation.target.parentNode;
+          if (parent && parent.nodeType === Node.ELEMENT_NODE) {
+            const parentElement = parent as Element;
+            if (parentElement.hasAttribute?.('data-makeitpop-highlight')) {
+              continue;
+            }
+          }
+          hasRelevantMutation = true;
+          break;
+        } else if (mutation.type === 'childList') {
+          if (mutation.addedNodes.length > 0) {
+            for (const node of mutation.addedNodes) {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                const element = node as Element;
+                if (element.hasAttribute?.('data-makeitpop-highlight')) {
+                  continue;
+                }
+              }
+              hasRelevantMutation = true;
+              break;
+            }
+          }
+          if (hasRelevantMutation) break;
+
+          if (mutation.removedNodes.length > 0) {
+            hasRelevantMutation = true;
+            break;
+          }
+        }
+      }
+
+      if (hasRelevantMutation) {
+        this.mutationsPending = true;
+        this.debouncedHighlight();
+      }
+    });
+
+    this.observer.observe(this.rootElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      characterDataOldValue: false,
+    });
+  }
+
+  stop() {
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
   }
 }
-
-const debouncedHighlight = debounce(highlightNewContent, 3000);
 
 async function highlightPage() {
   // Check if extension is enabled
@@ -229,24 +317,10 @@ async function highlightPage() {
     }
   }
 
-  globalPhraseMap = phraseMap;
-  globalMode = mode; // Store mode globally for styling
-
-  // Initial highlight
-  currentLoopNumber = Math.floor(Math.random() * 1000000000);
-  walkTextNodes(document.body, phraseMap, currentLoopNumber);
-
-  // Set up MutationObserver for dynamic content
-  // Observer just sets flag, debounced function does actual work to avoid excessive re-highlights
-  const observer = new MutationObserver((mutations) => {
-    shouldHighlight = true;
-    debouncedHighlight();
-  });
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-  });
+  // Use the new Highlighter class
+  const highlighter = new Highlighter();
+  highlighter.setPhrases(phraseMap, mode);
+  highlighter.start();
 }
 
 // Wait for page to fully load and React hydration to complete before highlighting
