@@ -168,6 +168,57 @@ it('should handle phrases with special characters and word boundaries', () => {
 
 You can see all the test cases in one list, and the expected result is the same for all.
 
+## Tests Must Fight For Their Existence
+
+Not all code needs tests. Every test must justify its existence by providing **clear net value**.
+
+### ✅ Tests Worth Writing
+
+These tests protect against real breakage:
+
+1. **Core functionality** - "Does the main feature work at all?"
+2. **Regression tests** - "Does the bug we just fixed stay fixed?"
+3. **Stable contracts** - "Do our public APIs work as documented?"
+
+Example: If your matcher should prioritize "code review" over "code", test that. If it breaks, users will notice immediately.
+
+### ❌ Tests Not Worth Writing
+
+These tests are noise that hides meaningful tests:
+
+1. **Implementation details** - Testing HOW code works, not WHAT it does
+   - ❌ "Does MutationObserver fire when DOM changes?"
+   - ❌ "Is the cache being used?"
+   - ❌ "Does the debounce function delay execution?"
+
+2. **Already-tested behavior** - Redundant tests add maintenance cost without benefit
+   - If matcher.test.ts already tests longest-match logic, don't test it again in integration tests
+
+3. **Unstable internals** - Tests that break when you refactor
+   - If you could swap MutationObserver for polling and the behavior is identical, you're testing the wrong thing
+
+### The Hard Question
+
+Before writing a test, ask: **"If I deleted this test, would I lose sleep?"**
+
+- If yes → The test is protecting something valuable
+- If no → The test is noise
+
+**Example:**
+- "If highlighting stops working on dynamic sites" → Would lose sleep → Write test
+- "If we switch from MutationObserver to polling" → Wouldn't lose sleep → Don't test implementation
+
+### When Manual Testing Is Better
+
+Sometimes the right answer is **no automated test**:
+
+- Code isn't designed to be testable (would require significant refactoring)
+- The refactoring cost exceeds the test benefit
+- Manual testing on real sites (like LinkedIn) provides better confidence
+- The test would be so complex it becomes maintenance burden
+
+**Remember:** Tests are tools, not goals. Don't write tests for test's sake.
+
 ## Testing Philosophy Checklist
 
 Before committing a test, ask yourself:
@@ -178,6 +229,7 @@ Before committing a test, ask yourself:
 - [ ] Does the test tell a clear story: input → run → expect?
 - [ ] Could I remove all the comments and still understand what's being tested?
 - [ ] If this test fails, will the error message show me exactly what's wrong?
+- [ ] **Would I lose sleep if this test didn't exist?** ← The most important question
 
 ## Remember
 
