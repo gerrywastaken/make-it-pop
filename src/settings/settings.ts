@@ -1351,7 +1351,7 @@ document.getElementById('domainsList')!.addEventListener('click', async (e) => {
 document.getElementById('addGroup')?.addEventListener('click', () => {
   const newGroup: Group = {
     id: '', // Will be set in save
-    name: 'New Group',
+    name: '',
     enabled: true,
     lightBgColor: '#ffff00',
     lightTextColor: '#000000',
@@ -1462,17 +1462,17 @@ document.getElementById('loadSampleData')?.addEventListener('click', async () =>
       enabled: true,
       lightBgColor: '#ffff00',
       lightTextColor: '#000000',
-      darkBgColor: '#3a3a00',
-      darkTextColor: '#ffffff',
+      darkBgColor: '#e5a50a',
+      darkTextColor: '#000000',
       phrases: ['code review', 'pull request', 'merge conflict', 'technical debt']
     },
     {
       id: crypto.randomUUID(),
       name: 'Important Actions',
       enabled: true,
-      lightBgColor: '#ff6b6b',
-      lightTextColor: '#ffffff',
-      darkBgColor: '#8b0000',
+      lightBgColor: '#f66151',
+      lightTextColor: '#000000',
+      darkBgColor: '#a51d2d',
       darkTextColor: '#ffffff',
       phrases: ['needs attention', 'breaking change', 'security issue', 'critical bug']
     },
