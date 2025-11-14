@@ -1373,7 +1373,7 @@ document.getElementById('addGroup')?.addEventListener('click', () => {
 document.getElementById('addDomain')?.addEventListener('click', () => {
   const newDomain: Domain = {
     id: '', // Will be set in save
-    domain: 'example.com',
+    domain: '',
     matchMode: 'domain-and-www',
     mode: 'light'
   };
@@ -1450,6 +1450,62 @@ document.getElementById('importFile')!.addEventListener('change', async (e) => {
 
   // Reset file input so the same file can be selected again
   fileInput.value = '';
+});
+
+// Load Sample Data handler
+document.getElementById('loadSampleData')?.addEventListener('click', async () => {
+  // Create sample groups
+  const sampleGroups: Group[] = [
+    {
+      id: crypto.randomUUID(),
+      name: 'Key Terms',
+      enabled: true,
+      lightBgColor: '#ffff00',
+      lightTextColor: '#000000',
+      darkBgColor: '#3a3a00',
+      darkTextColor: '#ffffff',
+      phrases: ['code review', 'pull request', 'merge conflict', 'technical debt']
+    },
+    {
+      id: crypto.randomUUID(),
+      name: 'Important Actions',
+      enabled: true,
+      lightBgColor: '#ff6b6b',
+      lightTextColor: '#ffffff',
+      darkBgColor: '#8b0000',
+      darkTextColor: '#ffffff',
+      phrases: ['needs attention', 'breaking change', 'security issue', 'critical bug']
+    },
+    {
+      id: crypto.randomUUID(),
+      name: 'Positive Indicators',
+      enabled: true,
+      lightBgColor: '#51cf66',
+      lightTextColor: '#000000',
+      darkBgColor: '#1e4620',
+      darkTextColor: '#ffffff',
+      phrases: ['approved', 'looks good', 'well done', 'great work']
+    }
+  ];
+
+  // Create sample domains
+  const sampleDomains: Domain[] = [
+    {
+      id: crypto.randomUUID(),
+      domain: 'github.com',
+      matchMode: 'domain-and-www',
+      mode: 'light'
+    }
+  ];
+
+  // Save sample data
+  groups = sampleGroups;
+  domains = sampleDomains;
+  await saveGroups(groups);
+  await saveDomains(domains);
+
+  showToast('Sample data loaded! Visit github.com to see it in action.');
+  render();
 });
 
 init();
