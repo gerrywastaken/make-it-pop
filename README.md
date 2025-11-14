@@ -18,26 +18,28 @@ Make It Pop lets you define groups of phrases (like "code review", "pull request
 - **Dynamic Updates**: Highlights new content as pages load and change
 - **Easy Management**: Simple settings page to manage all your groups and domains
 
+## Installation
+
+- **Firefox** (Desktop & Mobile): [Install from Firefox Add-ons](https://addons.mozilla.org) - fully approved and listed
+- **Edge**: Available on Edge Add-ons (pending final approval)
+- **Chrome**: Works great, but not listed in Chrome Web Store (they charge open-source developers). You can [download the latest build](https://github.com/gerrywastaken/make-it-pop/releases) and install manually.
+
 ## How to use
 
-1. **Install the extension** in your browser (Chrome or Firefox)
-
-2. **Open Settings**: Right-click the extension icon and select "Options" (or go to your browser's extensions page)
-
-3. **Create a phrase group**:
+1. **Create a phrase group**:
    - Click "Add Group"
    - Give it a name (e.g., "Important Terms")
    - Choose colors for light and dark modes
    - Add your phrases (one per line)
    - Make sure it's enabled (checkbox)
 
-4. **Add a domain**:
+2. **Add a domain**:
    - Click "Add Domain"
    - Enter a website (e.g., `linkedin.com` or `*.github.com`)
    - Choose light or dark mode
    - Select which groups to use on this domain
 
-5. **Browse!** Visit the website and see your phrases highlighted
+3. **Browse!** Visit the website and see your phrases highlighted
 
 ## Examples
 
