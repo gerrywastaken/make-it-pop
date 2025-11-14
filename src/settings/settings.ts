@@ -453,13 +453,21 @@ function render() {
 
 function renderGroups() {
   const list = document.getElementById('groupsList')!;
+  const emptyState = document.getElementById('groupsEmptyState')!;
+
   // Clear existing content
   list.textContent = '';
 
-  groups.forEach(g => {
-    const card = createGroupCard(g);
-    list.appendChild(card);
-  });
+  // Show or hide empty state
+  if (groups.length === 0) {
+    emptyState.classList.remove('hidden');
+  } else {
+    emptyState.classList.add('hidden');
+    groups.forEach(g => {
+      const card = createGroupCard(g);
+      list.appendChild(card);
+    });
+  }
 }
 
 function createGroupCard(g: Group): HTMLElement {
@@ -891,13 +899,21 @@ function cancelGroupEdit(card: HTMLElement) {
 
 function renderDomains() {
   const list = document.getElementById('domainsList')!;
+  const emptyState = document.getElementById('domainsEmptyState')!;
+
   // Clear existing content
   list.textContent = '';
 
-  domains.forEach(d => {
-    const card = createDomainCard(d);
-    list.appendChild(card);
-  });
+  // Show or hide empty state
+  if (domains.length === 0) {
+    emptyState.classList.remove('hidden');
+  } else {
+    emptyState.classList.add('hidden');
+    domains.forEach(d => {
+      const card = createDomainCard(d);
+      list.appendChild(card);
+    });
+  }
 }
 
 function createDomainCard(d: Domain): HTMLElement {
@@ -1341,7 +1357,7 @@ document.getElementById('addGroup')?.addEventListener('click', () => {
     lightTextColor: '#000000',
     darkBgColor: '#3a3a00',
     darkTextColor: '#ffffff',
-    phrases: ['example phrase']
+    phrases: []
   };
 
   const card = createGroupCard(newGroup);

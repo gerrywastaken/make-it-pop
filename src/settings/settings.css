@@ -720,3 +720,72 @@ hr {
   border-top: 1px solid var(--divider-color);
   margin: 40px 0;
 }
+
+/* Empty State */
+.empty-state {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 30px;
+  background: var(--card-bg);
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.empty-state.hidden {
+  display: none;
+}
+
+.empty-state h2 {
+  margin: 0 0 15px 0;
+  color: var(--heading-color);
+  font-size: 24px;
+}
+
+.empty-state h3 {
+  margin: 20px 0 10px 0;
+  color: var(--heading-color);
+  font-size: 18px;
+}
+
+.empty-state-intro {
+  font-size: 16px;
+  color: var(--text-color);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.empty-state-section {
+  margin: 25px 0;
+}
+
+.empty-state-list {
+  margin: 10px 0;
+  padding-left: 25px;
+  line-height: 1.8;
+}
+
+.empty-state-list li {
+  margin: 8px 0;
+  color: var(--text-color);
+}
+
+.empty-state-list ul {
+  margin: 5px 0;
+  padding-left: 20px;
+}
+
+.empty-state-list ul li {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.empty-state-example {
+  padding: 15px;
+  background: var(--input-bg);
+  border-left: 4px solid var(--button-primary-bg);
+  border-radius: 4px;
+  margin: 15px 0;
+  font-style: italic;
+  color: var(--muted-color);
+}
