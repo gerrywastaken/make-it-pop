@@ -22,6 +22,43 @@
     <div class="tab-content active" id="groups">
       <button class="add-button primary" id="addGroup">+ Add Group</button>
       <div style="clear: both;"></div>
+
+      <!-- Empty State Message for Groups -->
+      <div id="groupsEmptyState" class="empty-state">
+        <h2>🎨 Welcome to Make It Pop!</h2>
+        <p class="empty-state-intro">
+          This extension highlights specific phrases on web pages with customizable colors.
+          Perfect for identifying key terms, tracking important concepts, or making certain words stand out.
+        </p>
+
+        <div class="empty-state-section">
+          <h3>📋 How It Works</h3>
+          <ol class="empty-state-list">
+            <li><strong>Create Groups</strong> - Organize phrases into color-coded groups (e.g., "Important Terms", "Names to Watch")</li>
+            <li><strong>Add Phrases</strong> - Add multi-word phrases to each group that you want highlighted</li>
+            <li><strong>Choose Colors</strong> - Pick different highlight colors for light and dark mode</li>
+            <li><strong>Configure Domains</strong> - Specify which websites should have highlighting enabled</li>
+          </ol>
+        </div>
+
+        <div class="empty-state-section">
+          <h3>🚀 Quick Start</h3>
+          <p>Choose one of these options:</p>
+          <div style="margin: 20px 0;">
+            <button id="loadSampleData" class="primary" style="margin-right: 10px;">
+              ✨ Load Sample Data
+            </button>
+            <span style="color: var(--muted-color); font-size: 14px;">
+              or click <strong>"+ Add Group"</strong> above to start from scratch
+            </span>
+          </div>
+          <p class="empty-state-example">
+            <strong>Sample data includes:</strong> Example groups with tech terms and color coding,
+            pre-configured for github.com to demonstrate the extension immediately.
+          </p>
+        </div>
+      </div>
+
       <div id="groupsList"></div>
     </div>
 
@@ -29,6 +66,40 @@
     <div class="tab-content" id="domains">
       <button class="add-button primary" id="addDomain">+ Add Domain</button>
       <div style="clear: both;"></div>
+
+      <!-- Empty State Message for Domains -->
+      <div id="domainsEmptyState" class="empty-state">
+        <h2>🌐 Domain Configuration</h2>
+        <p class="empty-state-intro">
+          Domains control where phrase highlighting is active and which color scheme to use.
+        </p>
+
+        <div class="empty-state-section">
+          <h3>💡 Before You Start</h3>
+          <p>You need to create at least one <strong>Group</strong> (in the Groups tab) before adding domains.</p>
+        </div>
+
+        <div class="empty-state-section">
+          <h3>⚙️ Domain Settings</h3>
+          <ul class="empty-state-list">
+            <li><strong>Domain</strong> - The website where highlighting should work (e.g., "github.com", "linkedin.com")</li>
+            <li><strong>Match Mode</strong> - Control subdomain matching:
+              <ul>
+                <li><em>Domain + www</em> - Matches example.com and www.example.com</li>
+                <li><em>All subdomains</em> - Matches any.subdomain.example.com</li>
+                <li><em>Exact match</em> - Only matches the exact domain specified</li>
+              </ul>
+            </li>
+            <li><strong>Mode</strong> - Choose light or dark color scheme for the domain</li>
+            <li><strong>Groups</strong> - Select which phrase groups are active (or use all groups)</li>
+          </ul>
+        </div>
+
+        <div class="empty-state-section">
+          <p>Click the <strong>"+ Add Domain"</strong> button above to configure your first domain.</p>
+        </div>
+      </div>
+
       <div id="domainsList"></div>
     </div>
 

@@ -453,13 +453,21 @@ function render() {
 
 function renderGroups() {
   const list = document.getElementById('groupsList')!;
+  const emptyState = document.getElementById('groupsEmptyState')!;
+
   // Clear existing content
   list.textContent = '';
 
-  groups.forEach(g => {
-    const card = createGroupCard(g);
-    list.appendChild(card);
-  });
+  // Show or hide empty state
+  if (groups.length === 0) {
+    emptyState.classList.remove('hidden');
+  } else {
+    emptyState.classList.add('hidden');
+    groups.forEach(g => {
+      const card = createGroupCard(g);
+      list.appendChild(card);
+    });
+  }
 }
 
 function createGroupCard(g: Group): HTMLElement {
@@ -891,13 +899,21 @@ function cancelGroupEdit(card: HTMLElement) {
 
 function renderDomains() {
   const list = document.getElementById('domainsList')!;
+  const emptyState = document.getElementById('domainsEmptyState')!;
+
   // Clear existing content
   list.textContent = '';
 
-  domains.forEach(d => {
-    const card = createDomainCard(d);
-    list.appendChild(card);
-  });
+  // Show or hide empty state
+  if (domains.length === 0) {
+    emptyState.classList.remove('hidden');
+  } else {
+    emptyState.classList.add('hidden');
+    domains.forEach(d => {
+      const card = createDomainCard(d);
+      list.appendChild(card);
+    });
+  }
 }
 
 function createDomainCard(d: Domain): HTMLElement {
@@ -1335,13 +1351,13 @@ document.getElementById('domainsList')!.addEventListener('click', async (e) => {
 document.getElementById('addGroup')?.addEventListener('click', () => {
   const newGroup: Group = {
     id: '', // Will be set in save
-    name: 'New Group',
+    name: '',
     enabled: true,
     lightBgColor: '#ffff00',
     lightTextColor: '#000000',
     darkBgColor: '#3a3a00',
     darkTextColor: '#ffffff',
-    phrases: ['example phrase']
+    phrases: []
   };
 
   const card = createGroupCard(newGroup);
@@ -1357,7 +1373,7 @@ document.getElementById('addGroup')?.addEventListener('click', () => {
 document.getElementById('addDomain')?.addEventListener('click', () => {
   const newDomain: Domain = {
     id: '', // Will be set in save
-    domain: 'example.com',
+    domain: '',
     matchMode: 'domain-and-www',
     mode: 'light'
   };
@@ -1434,6 +1450,62 @@ document.getElementById('importFile')!.addEventListener('change', async (e) => {
 
   // Reset file input so the same file can be selected again
   fileInput.value = '';
+});
+
+// Load Sample Data handler
+document.getElementById('loadSampleData')?.addEventListener('click', async () => {
+  // Create sample groups
+  const sampleGroups: Group[] = [
+    {
+      id: crypto.randomUUID(),
+      name: 'Key Terms',
+      enabled: true,
+      lightBgColor: '#ffff00',
+      lightTextColor: '#000000',
+      darkBgColor: '#e5a50a',
+      darkTextColor: '#000000',
+      phrases: ['code review', 'pull request', 'merge conflict', 'technical debt']
+    },
+    {
+      id: crypto.randomUUID(),
+      name: 'Important Actions',
+      enabled: true,
+      lightBgColor: '#f66151',
+      lightTextColor: '#000000',
+      darkBgColor: '#a51d2d',
+      darkTextColor: '#ffffff',
+      phrases: ['needs attention', 'breaking change', 'security issue', 'critical bug']
+    },
+    {
+      id: crypto.randomUUID(),
+      name: 'Positive Indicators',
+      enabled: true,
+      lightBgColor: '#51cf66',
+      lightTextColor: '#000000',
+      darkBgColor: '#1e4620',
+      darkTextColor: '#ffffff',
+      phrases: ['approved', 'looks good', 'well done', 'great work']
+    }
+  ];
+
+  // Create sample domains
+  const sampleDomains: Domain[] = [
+    {
+      id: crypto.randomUUID(),
+      domain: 'github.com',
+      matchMode: 'domain-and-www',
+      mode: 'light'
+    }
+  ];
+
+  // Save sample data
+  groups = sampleGroups;
+  domains = sampleDomains;
+  await saveGroups(groups);
+  await saveDomains(domains);
+
+  showToast('Sample data loaded! Visit github.com to see it in action.');
+  render();
 });
 
 init();
