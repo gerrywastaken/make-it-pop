@@ -20,7 +20,7 @@ Make It Pop lets you define groups of phrases (like "code review", "pull request
 
 ## Installation
 
-- **Firefox** (Desktop & Mobile): [Install from Firefox Add-ons](https://addons.mozilla.org) - fully approved and listed
+- **Firefox** (Desktop & Mobile): [Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/make-it-pop/) - fully approved and listed
 - **Edge**: Available on Edge Add-ons (pending final approval)
 - **Chrome**: Works great, but not listed in Chrome Web Store (they charge open-source developers). You can [download the latest build](https://github.com/gerrywastaken/make-it-pop/releases) and install manually.
 
