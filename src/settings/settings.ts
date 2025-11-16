@@ -300,18 +300,22 @@ function domainToHostPatterns(domainConfig: Domain): string[] {
 async function requestDomainPermissions(domainConfig: Domain): Promise<boolean> {
   try {
     const origins = domainToHostPatterns(domainConfig);
+    console.log('[MakeItPop] Requesting permissions for:', origins);
 
     // Check if we already have permission
     const hasPermission = await browserAPI.permissions.contains({ origins });
+    console.log('[MakeItPop] Already has permission:', hasPermission);
     if (hasPermission) {
       return true;
     }
 
     // Request permission from user
+    console.log('[MakeItPop] Prompting user for permission...');
     const granted = await browserAPI.permissions.request({ origins });
+    console.log('[MakeItPop] Permission granted:', granted);
     return granted;
   } catch (error) {
-    console.error('Error requesting permissions:', error);
+    console.error('[MakeItPop] Error requesting permissions:', error);
     return false;
   }
 }

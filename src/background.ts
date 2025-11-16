@@ -124,8 +124,11 @@ browserAPI.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     return;
   }
 
+  console.log('[MakeItPop Background] Tab loaded:', url);
+
   // Check if we should inject on this tab
   const shouldInject = await shouldInjectOnTab(url);
+  console.log('[MakeItPop Background] Should inject:', shouldInject);
   if (!shouldInject) {
     return;
   }
@@ -134,9 +137,13 @@ browserAPI.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   const hasPermission = await browserAPI.permissions.contains({
     origins: [url]
   });
+  console.log('[MakeItPop Background] Has permission for', url, ':', hasPermission);
 
   if (hasPermission) {
+    console.log('[MakeItPop Background] Injecting content script into tab', tabId);
     await injectContentScript(tabId);
+  } else {
+    console.log('[MakeItPop Background] No permission for', url, '- skipping injection');
   }
 });
 
@@ -148,6 +155,7 @@ browserAPI.storage.onChanged.addListener(async (changes, areaName) => {
 
   // If domains were updated, we might need to inject on currently open tabs
   if (changes.domains) {
+    console.log('[MakeItPop Background] Domains changed, checking open tabs...');
     // Get all tabs and check if we should inject
     const tabs = await browserAPI.tabs.query({});
 
@@ -161,12 +169,14 @@ browserAPI.storage.onChanged.addListener(async (changes, areaName) => {
         continue;
       }
 
+      console.log('[MakeItPop Background] Checking permissions for open tab:', tab.url);
       // Check if we have permission
       const hasPermission = await browserAPI.permissions.contains({
         origins: [tab.url]
       });
 
       if (hasPermission) {
+        console.log('[MakeItPop Background] Injecting into open tab:', tab.id);
         await injectContentScript(tab.id);
       }
     }
