@@ -1420,18 +1420,28 @@ document.getElementById('domainsList')!.addEventListener('click', async (e) => {
 
   if (target.classList.contains('request-permission')) {
     // Request permission for this domain
+    // IMPORTANT: Cannot use async/await - Firefox requires direct call from user action
     const id = target.getAttribute('data-id');
     if (!id) return;
 
     const domain = domains.find(d => d.id === id);
     if (!domain) return;
 
-    const granted = await requestDomainPermissions(domain);
-    if (granted) {
-      showToast(`Permission granted for ${domain.domain}!`);
-    } else {
-      showToast(`Permission denied for ${domain.domain}`, 'warning');
-    }
+    const origins = domainToHostPatterns(domain);
+    console.log('[MakeItPop] Requesting permissions for:', origins);
+
+    // Call permissions.request() directly without async/await
+    browserAPI.permissions.request({ origins }).then(granted => {
+      console.log('[MakeItPop] Permission granted:', granted);
+      if (granted) {
+        showToast(`Permission granted for ${domain.domain}!`);
+      } else {
+        showToast(`Permission denied for ${domain.domain}`, 'warning');
+      }
+    }).catch(error => {
+      console.error('[MakeItPop] Error requesting permission:', error);
+      showToast(`Error requesting permission: ${error.message}`, 'warning');
+    });
   } else if (target.classList.contains('edit-domain')) {
     // Toggle to edit mode
     const id = target.getAttribute('data-id');
@@ -1564,15 +1574,25 @@ document.getElementById('importFile')!.addEventListener('change', async (e) => {
 });
 
 // Grant All Sites Permission handler
-document.getElementById('grantAllSitesPermission')?.addEventListener('click', async () => {
-  const granted = await requestAllSitesPermission();
+// IMPORTANT: Cannot use async/await here - Firefox requires direct call from user action
+document.getElementById('grantAllSitesPermission')?.addEventListener('click', () => {
+  console.log('[MakeItPop] Grant all sites button clicked');
 
-  if (granted) {
-    showToast('Permission granted for all sites! The extension will now work on all configured domains.');
-    updatePermissionStatus();
-  } else {
-    showToast('Permission denied. You can still grant permissions per-domain using the 🔓 buttons.', 'warning');
-  }
+  // Call permissions.request() directly without async/await to avoid promise chain
+  browserAPI.permissions.request({
+    origins: ['<all_urls>']
+  }).then(granted => {
+    console.log('[MakeItPop] All sites permission result:', granted);
+    if (granted) {
+      showToast('Permission granted for all sites! The extension will now work on all configured domains.');
+      updatePermissionStatus();
+    } else {
+      showToast('Permission denied. You can still grant permissions per-domain using the 🔓 buttons.', 'warning');
+    }
+  }).catch(error => {
+    console.error('[MakeItPop] Error requesting all sites permission:', error);
+    showToast('Error requesting permission: ' + error.message, 'warning');
+  });
 });
 
 // Load Sample Data handler
