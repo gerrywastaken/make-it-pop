@@ -274,6 +274,48 @@ let domains: Domain[] = [];
 let editingGroupId: string | null = null;
 let editingDomainId: string | null = null;
 
+// Convert domain config to host patterns for permissions
+function domainToHostPatterns(domainConfig: Domain): string[] {
+  const { domain, matchMode } = domainConfig;
+  const patterns: string[] = [];
+
+  switch (matchMode) {
+    case 'domain-and-www':
+      patterns.push(`*://${domain}/*`);
+      patterns.push(`*://www.${domain}/*`);
+      break;
+    case 'all-subdomains':
+      patterns.push(`*://*.${domain}/*`);
+      patterns.push(`*://${domain}/*`); // Include base domain
+      break;
+    case 'exact':
+      patterns.push(`*://${domain}/*`);
+      break;
+  }
+
+  return patterns;
+}
+
+// Request permissions for a domain
+async function requestDomainPermissions(domainConfig: Domain): Promise<boolean> {
+  try {
+    const origins = domainToHostPatterns(domainConfig);
+
+    // Check if we already have permission
+    const hasPermission = await browserAPI.permissions.contains({ origins });
+    if (hasPermission) {
+      return true;
+    }
+
+    // Request permission from user
+    const granted = await browserAPI.permissions.request({ origins });
+    return granted;
+  } catch (error) {
+    console.error('Error requesting permissions:', error);
+    return false;
+  }
+}
+
 // Migrate old data format to new format
 async function migrateData() {
   const rawData = await browserAPI.storage.local.get(['groups', 'domains']);
@@ -1244,6 +1286,14 @@ async function saveDomainFromCard(card: HTMLElement) {
     }
   }
 
+  // Request permissions for this domain
+  const permissionGranted = await requestDomainPermissions(newDomain);
+
+  if (!permissionGranted) {
+    showToast('Permission denied for this domain. The extension will not run on this site.', 'warning');
+    // Continue anyway - user can grant permission later
+  }
+
   if (id) {
     // Update existing domain
     const index = domains.findIndex(d => d.id === id);
@@ -1251,12 +1301,12 @@ async function saveDomainFromCard(card: HTMLElement) {
       domains[index] = newDomain;
     }
     await saveDomains(domains);
-    showToast('Domain updated successfully!');
+    showToast(permissionGranted ? 'Domain updated successfully!' : 'Domain updated (permission required)');
   } else {
     // Add new domain
     domains.push(newDomain);
     await saveDomains(domains);
-    showToast('Domain added successfully!');
+    showToast(permissionGranted ? 'Domain added successfully!' : 'Domain added (permission required)');
   }
 
   render();
