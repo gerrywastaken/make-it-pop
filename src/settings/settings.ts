@@ -979,6 +979,11 @@ function createDomainCard(d: Domain): HTMLElement {
   // Action buttons
   const actions = createElement('div', { className: 'card-actions' });
   actions.appendChild(createElement('button', {
+    textContent: '🔓',
+    className: 'icon-only request-permission',
+    attributes: { 'data-id': d.id, title: 'Request Permission' }
+  }));
+  actions.appendChild(createElement('button', {
     textContent: '✏️',
     className: 'icon-only edit-domain',
     attributes: { 'data-id': d.id, title: 'Edit' }
@@ -1375,7 +1380,21 @@ document.getElementById('groupsList')!.addEventListener('click', async (e) => {
 document.getElementById('domainsList')!.addEventListener('click', async (e) => {
   const target = e.target as HTMLElement;
 
-  if (target.classList.contains('edit-domain')) {
+  if (target.classList.contains('request-permission')) {
+    // Request permission for this domain
+    const id = target.getAttribute('data-id');
+    if (!id) return;
+
+    const domain = domains.find(d => d.id === id);
+    if (!domain) return;
+
+    const granted = await requestDomainPermissions(domain);
+    if (granted) {
+      showToast(`Permission granted for ${domain.domain}!`);
+    } else {
+      showToast(`Permission denied for ${domain.domain}`, 'warning');
+    }
+  } else if (target.classList.contains('edit-domain')) {
     // Toggle to edit mode
     const id = target.getAttribute('data-id');
     if (!id) return;
