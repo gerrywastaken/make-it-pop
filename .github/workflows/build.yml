@@ -79,11 +79,7 @@ jobs:
         with:
           header: extension-build
           message: |
-            ## 📦 Extension Build
-
-            **[⬇️ Download `makeitpop-extension.zip`](${{ steps.artifact.outputs.artifact-url }})**
-
-            <sub>Commit: ${{ github.sha }} • Updates automatically with each push</sub>
+            [makeitpop-build-${{ github.event.pull_request.head.sha }}.zip](${{ steps.artifact.outputs.artifact-url }})
 
       - name: Get version from manifest
         id: version
