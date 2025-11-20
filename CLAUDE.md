@@ -178,7 +178,7 @@ interface StorageData {
 
   "browser_specific_settings": {
     "gecko": {
-      "id": "makeitpop@example.com"
+      "id": "makeitpop@sandegg.com"
     }
   }
 }
