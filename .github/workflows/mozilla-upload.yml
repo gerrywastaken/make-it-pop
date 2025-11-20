@@ -17,32 +17,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
         with:
-          version: 10
+          ref: ${{ inputs.release_tag }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run tests
-        run: pnpm test -- --run
-
-      - name: Build extension
-        run: pnpm run build
-
-      - name: Create extension zip
+      - name: Download release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          cd dist
-          zip -r ../makeitpop-extension.zip .
-          cd ..
+          gh release download ${{ inputs.release_tag }} \
+            -p "makeitpop-extension.zip" \
+            -R ${{ github.repository }}
 
       - name: Create source code archive
         run: |
