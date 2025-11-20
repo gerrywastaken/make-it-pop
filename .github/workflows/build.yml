@@ -74,7 +74,7 @@ jobs:
 
       - name: Comment PR with build link
         if: github.event_name == 'pull_request'
-        uses: gerrywastaken/sticky-pull-request-comment@v2
+        uses: gerrywastaken/sticky-pull-request-comment@main
         with:
           header: extension-build
           message: |
