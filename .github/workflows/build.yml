@@ -52,6 +52,13 @@ jobs:
           echo "branch=${SAFE_BRANCH}" >> $GITHUB_OUTPUT
           echo "Sanitized branch name: ${SAFE_BRANCH}"
 
+          # Extract short SHA for PR builds
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            SHORT_SHA=$(echo "${{ github.event.pull_request.head.sha }}" | cut -c1-7)
+            echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+            echo "Short SHA: ${SHORT_SHA}"
+          fi
+
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
@@ -59,14 +66,24 @@ jobs:
           path: dist/
           retention-days: 30
 
-      - name: Create extension zip
+      - name: Upload extension artifact (for PRs)
+        if: github.event_name == 'pull_request'
+        id: artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: makeitpop-build-${{ steps.sanitize.outputs.short_sha }}
+          path: dist/
+          retention-days: 30
+
+      - name: Create extension zip (for releases)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
           cd dist
           zip -r ../makeitpop-extension.zip .
           cd ..
 
-      - name: Upload extension zip
-        id: artifact
+      - name: Upload extension zip (for releases)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: extension-zip-${{ steps.sanitize.outputs.branch }}-${{ github.sha }}
@@ -79,7 +96,7 @@ jobs:
         with:
           header: extension-build
           message: |
-            [makeitpop-build.zip](${{ steps.artifact.outputs.artifact-url }}) - [${{ github.event.pull_request.head.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha }})
+            [makeitpop-build-${{ steps.sanitize.outputs.short_sha }}.zip](${{ steps.artifact.outputs.artifact-url }}) - [${{ steps.sanitize.outputs.short_sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha }})
 
       - name: Get version from manifest
         id: version
