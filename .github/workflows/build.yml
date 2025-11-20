@@ -79,7 +79,7 @@ jobs:
         with:
           header: extension-build
           message: |
-            [makeitpop-build-${{ github.event.pull_request.head.sha }}.zip](${{ steps.artifact.outputs.artifact-url }})
+            [makeitpop-build.zip](${{ steps.artifact.outputs.artifact-url }}) - [${{ github.event.pull_request.head.sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha }})
 
       - name: Get version from manifest
         id: version
