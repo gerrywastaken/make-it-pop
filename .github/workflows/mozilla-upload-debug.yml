@@ -4,7 +4,7 @@ on:
   workflow_dispatch:  # Manual trigger only
     inputs:
       release_tag:
-        description: 'Release tag to reference (e.g., v1.0.3-20251114-192449)'
+        description: 'Release URL or tag (e.g., https://github.com/gerrywastaken/make-it-pop/releases/tag/v1.0.3-20251120-224046 OR v1.0.3-20251120-224046)'
         required: true
         type: string
 
@@ -15,17 +15,31 @@ jobs:
       contents: read
 
     steps:
+      - name: Extract release tag from URL or input
+        id: extract_tag
+        run: |
+          INPUT="${{ inputs.release_tag }}"
+          # If input contains '/releases/tag/', extract the tag portion
+          if [[ "$INPUT" == *"/releases/tag/"* ]]; then
+            RELEASE_TAG="${INPUT##*/}"
+            echo "Extracted tag from URL: $RELEASE_TAG"
+          else
+            RELEASE_TAG="$INPUT"
+            echo "Using tag as provided: $RELEASE_TAG"
+          fi
+          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.release_tag }}
+          ref: ${{ steps.extract_tag.outputs.tag }}
 
       - name: Download release artifacts
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "=== Downloading extension zip ==="
-          gh release download ${{ inputs.release_tag }} \
+          gh release download ${{ steps.extract_tag.outputs.tag }} \
             -p "makeitpop-extension.zip" \
             -R ${{ github.repository }}
 
@@ -35,7 +49,7 @@ jobs:
 
           echo ""
           echo "=== Downloading source archive ==="
-          gh release download ${{ inputs.release_tag }} \
+          gh release download ${{ steps.extract_tag.outputs.tag }} \
             -A zip \
             -R ${{ github.repository }}
 
@@ -52,7 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          RELEASE_TAG="${{ inputs.release_tag }}"
+          RELEASE_TAG="${{ steps.extract_tag.outputs.tag }}"
           RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
 
           echo "=== Release Information ==="
@@ -60,7 +74,7 @@ jobs:
           echo "URL: ${RELEASE_URL}"
 
           # Get release notes/changelog from the GitHub release
-          RELEASE_NOTES=$(gh release view ${{ inputs.release_tag }} \
+          RELEASE_NOTES=$(gh release view ${{ steps.extract_tag.outputs.tag }} \
             --json body \
             --jq '.body' \
             -R ${{ github.repository }})
