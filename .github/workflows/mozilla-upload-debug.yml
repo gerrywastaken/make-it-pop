@@ -1,12 +1,20 @@
 name: Mozilla Upload - Debug (Dry Run)
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  workflow_dispatch:  # Manual trigger
     inputs:
       release_tag:
         description: 'Release URL or tag (e.g., https://github.com/gerrywastaken/make-it-pop/releases/tag/v1.0.3-20251120-224046 OR v1.0.3-20251120-224046)'
         required: true
         type: string
+  push:
+    branches:
+      - "test-mozilla-upload"  # Auto-run on pushes to test branch
+
+env:
+  # Default release tag for push-triggered runs (override via workflow_dispatch)
+  # Update this to test different releases when pushing to test-mozilla-upload branch
+  DEFAULT_RELEASE_TAG: "v1.0.3-20251120-225630"
 
 jobs:
   debug-upload:
@@ -18,7 +26,14 @@ jobs:
       - name: Extract release tag from URL or input
         id: extract_tag
         run: |
-          INPUT="${{ inputs.release_tag }}"
+          # Use input if provided (workflow_dispatch), otherwise use default (push trigger)
+          if [ -n "${{ inputs.release_tag }}" ]; then
+            INPUT="${{ inputs.release_tag }}"
+          else
+            INPUT="${{ env.DEFAULT_RELEASE_TAG }}"
+            echo "Using default release tag from env: $INPUT"
+          fi
+
           # If input contains '/releases/tag/', extract the tag portion
           if [[ "$INPUT" == *"/releases/tag/"* ]]; then
             RELEASE_TAG="${INPUT##*/}"
