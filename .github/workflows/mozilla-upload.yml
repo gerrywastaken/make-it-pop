@@ -1,0 +1,87 @@
+name: Upload to Mozilla Add-ons
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  upload-to-mozilla:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test -- --run
+
+      - name: Build extension
+        run: pnpm run build
+
+      - name: Create extension zip
+        run: |
+          cd dist
+          zip -r ../makeitpop-extension.zip .
+          cd ..
+
+      - name: Create source code archive
+        run: |
+          zip -r makeitpop-source.zip \
+            src/ \
+            public/ \
+            package.json \
+            pnpm-lock.yaml \
+            tsconfig.json \
+            vite.config.ts \
+            BUILD_INSTRUCTIONS.md \
+            README.md \
+            -x "*.git*"
+
+      - name: Get release info
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            RELEASE_URL="${{ github.event.release.html_url }}"
+            RELEASE_TAG="${{ github.event.release.tag_name }}"
+          else
+            # For manual dispatch, use latest release or commit
+            RELEASE_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
+            RELEASE_TAG="manual-${{ github.sha }}"
+          fi
+          echo "url=${RELEASE_URL}" >> $GITHUB_OUTPUT
+          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Upload to Mozilla Add-ons
+        uses: kewisch/action-web-ext@v1
+        with:
+          cmd: sign
+          source: makeitpop-extension.zip
+          channel: listed
+          apiKey: ${{ secrets.MOZILLA_JWT_ISSUER }}
+          apiSecret: ${{ secrets.MOZILLA_JWT_SECRET }}
+          addon-guid: ${{ vars.MOZILLA_EXTENSIONS_ID }}
+          amoMetadata: |
+            {
+              "version": {
+                "approval_notes": "Hello, this is the new build and links to the related commit HEAD:\n${{ steps.release.outputs.url }}",
+                "license": "MIT",
+                "source": "makeitpop-source.zip"
+              }
+            }
