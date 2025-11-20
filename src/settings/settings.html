@@ -106,6 +106,27 @@
     <!-- SETTINGS TAB -->
     <div class="tab-content" id="settings">
       <div class="settings-section">
+        <h3>🔐 Permissions</h3>
+        <p class="settings-description">
+          Control how the extension accesses websites.
+        </p>
+        <div id="permissionStatus" style="margin: 15px 0; padding: 10px; background: var(--bg-secondary); border-radius: 5px;">
+          <p><strong>Current Status:</strong> <span id="permissionStatusText">Checking...</span></p>
+        </div>
+        <p class="settings-description" style="margin-bottom: 10px;">
+          <strong>Option 1 (Recommended for trust):</strong> Grant permission for all sites at once.
+          This means you never have to approve individual domains again.
+        </p>
+        <button id="grantAllSitesPermission" class="primary" style="margin-bottom: 15px;">
+          🔓 Grant Permission for All Sites
+        </button>
+        <p class="settings-description">
+          <strong>Option 2 (More secure):</strong> Grant permissions one domain at a time using the 🔓 button
+          next to each domain in the Domains tab. This gives you fine-grained control.
+        </p>
+      </div>
+
+      <div class="settings-section">
         <h3>📥 Import / Export</h3>
         <p class="settings-description">
           Export your configuration to share with others or back up your settings.
