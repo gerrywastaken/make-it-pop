@@ -9,14 +9,13 @@ on:
         type: string
 
 jobs:
-  upload-to-mozilla:
+  extract-tag:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
+    outputs:
+      release_tag: ${{ steps.extract.outputs.tag }}
     steps:
       - name: Extract release tag from URL or input
-        id: extract_tag
+        id: extract
         run: |
           INPUT="${{ inputs.release_tag }}"
           # If input contains '/releases/tag/', extract the tag portion
@@ -29,76 +28,10 @@ jobs:
           fi
           echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.extract_tag.outputs.tag }}
-
-      - name: Download release artifacts
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Download the extension zip
-          gh release download ${{ steps.extract_tag.outputs.tag }} \
-            -p "makeitpop-extension.zip" \
-            -R ${{ github.repository }}
-
-          # Download the source archive (GitHub auto-generates this)
-          gh release download ${{ steps.extract_tag.outputs.tag }} \
-            -A zip \
-            -R ${{ github.repository }}
-
-          # Rename the source archive to match expected name
-          mv make-it-pop-*.zip makeitpop-source.zip || \
-          mv ${{ github.event.repository.name }}-*.zip makeitpop-source.zip
-
-      - name: Get release info
-        id: release
-        run: |
-          RELEASE_TAG="${{ steps.extract_tag.outputs.tag }}"
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
-
-          echo "url=${RELEASE_URL}" >> $GITHUB_OUTPUT
-          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
-
-      - name: Extract changelog for this release
-        run: |
-          # Extract the latest version section from CHANGELOG.md
-          # Find content between first ## [ and second ## [
-          awk '/^## \[/{flag++; if(flag==2) exit} flag==1 && !/^## \[/' CHANGELOG.md > release_notes.txt
-
-          # Remove any trailing empty lines
-          sed -i -e :a -e '/^\s*$/d;N;ba' release_notes.txt || true
-
-      - name: Prepare AMO metadata
-        run: |
-          # Create metadata JSON with release notes using jq
-          RELEASE_NOTES_JSON=$(jq -Rs . < release_notes.txt)
-
-          jq -n \
-            --arg approval_notes "Hello, this is the new build and links to the related commit HEAD:\n${{ steps.release.outputs.url }}" \
-            --argjson release_notes "$RELEASE_NOTES_JSON" \
-            '{
-              "version": {
-                "approval_notes": $approval_notes,
-                "release_notes": {
-                  "en-US": $release_notes
-                },
-                "license": "MIT",
-                "source": "makeitpop-source.zip"
-              }
-            }' > amo-metadata.json
-
-          echo "AMO Metadata prepared:"
-          cat amo-metadata.json
-
-      - name: Upload to Mozilla Add-ons
-        uses: kewisch/action-web-ext@v1
-        with:
-          cmd: sign
-          source: makeitpop-extension.zip
-          channel: listed
-          apiKey: ${{ secrets.MOZILLA_JWT_ISSUER }}
-          apiSecret: ${{ secrets.MOZILLA_JWT_SECRET }}
-          addon-guid: ${{ vars.MOZILLA_EXTENSIONS_ID }}
-          amoMetadata: amo-metadata.json
+  upload:
+    needs: extract-tag
+    uses: ./.github/workflows/mozilla-upload-steps.yml
+    secrets: inherit
+    with:
+      release_tag: ${{ needs.extract-tag.outputs.release_tag }}
+      dry_run: false

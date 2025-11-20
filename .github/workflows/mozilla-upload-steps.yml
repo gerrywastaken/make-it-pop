@@ -1,0 +1,178 @@
+name: Mozilla Upload Steps (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: 'Release tag to upload (e.g., v1.0.3-20251120-225630)'
+        required: true
+        type: string
+      dry_run:
+        description: 'If true, shows what would be uploaded without actually uploading'
+        required: true
+        type: boolean
+    secrets:
+      MOZILLA_JWT_ISSUER:
+        required: false
+      MOZILLA_JWT_SECRET:
+        required: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+
+      - name: Download release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "=== Downloading extension zip ==="
+          fi
+
+          gh release download ${{ inputs.release_tag }} \
+            -p "makeitpop-extension.zip" \
+            -R ${{ github.repository }}
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "=== Extension zip downloaded ==="
+            ls -lh makeitpop-extension.zip
+            unzip -l makeitpop-extension.zip
+            echo ""
+            echo "=== Downloading source archive ==="
+          fi
+
+          gh release download ${{ inputs.release_tag }} \
+            -A zip \
+            -R ${{ github.repository }}
+
+          # Rename the source archive to match expected name
+          mv make-it-pop-*.zip makeitpop-source.zip || \
+          mv ${{ github.event.repository.name }}-*.zip makeitpop-source.zip
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "=== Source archive downloaded ==="
+            ls -lh makeitpop-source.zip
+            unzip -l makeitpop-source.zip | head -50
+          fi
+
+      - name: Get release info
+        id: release
+        run: |
+          RELEASE_TAG="${{ inputs.release_tag }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "=== Release Information ==="
+            echo "Tag: ${RELEASE_TAG}"
+            echo "URL: ${RELEASE_URL}"
+          fi
+
+          echo "url=${RELEASE_URL}" >> $GITHUB_OUTPUT
+          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog for this release
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "=== Extracting Release Notes from CHANGELOG.md ==="
+          fi
+
+          # Extract the latest version section from CHANGELOG.md
+          # Find content between first ## [ and second ## [
+          awk '/^## \[/{flag++; if(flag==2) exit} flag==1 && !/^## \[/' CHANGELOG.md > release_notes.txt
+
+          # Remove any trailing empty lines
+          sed -i -e :a -e '/^\s*$/d;N;ba' release_notes.txt || true
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Extracted release notes:"
+            cat release_notes.txt
+          fi
+
+      - name: Prepare AMO metadata
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "=== Preparing AMO Metadata ==="
+          fi
+
+          # Create metadata JSON with release notes using jq
+          RELEASE_NOTES_JSON=$(jq -Rs . < release_notes.txt)
+
+          jq -n \
+            --arg approval_notes "Hello, this is the new build and links to the related commit HEAD:\n${{ steps.release.outputs.url }}" \
+            --argjson release_notes "$RELEASE_NOTES_JSON" \
+            '{
+              "version": {
+                "approval_notes": $approval_notes,
+                "release_notes": {
+                  "en-US": $release_notes
+                },
+                "license": "MIT",
+                "source": "makeitpop-source.zip"
+              }
+            }' > amo-metadata.json
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo ""
+            echo "=== AMO Metadata JSON ==="
+            cat amo-metadata.json
+            echo ""
+            echo "=== Validating JSON ==="
+          fi
+
+          if jq empty amo-metadata.json 2>/dev/null; then
+            if [ "${{ inputs.dry_run }}" = "true" ]; then
+              echo "✓ JSON is valid"
+            fi
+          else
+            echo "✗ JSON is invalid!"
+            exit 1
+          fi
+
+      - name: Show what would be uploaded (dry run only)
+        if: inputs.dry_run
+        run: |
+          echo ""
+          echo "======================================"
+          echo "=== DRY RUN - NO UPLOAD WILL OCCUR ==="
+          echo "======================================"
+          echo ""
+          echo "The following would be sent to Mozilla Add-ons:"
+          echo ""
+          echo "Extension GUID: ${{ vars.MOZILLA_EXTENSIONS_ID }}"
+          echo "Channel: listed"
+          echo "Extension file: makeitpop-extension.zip ($(stat -f%z makeitpop-extension.zip 2>/dev/null || stat -c%s makeitpop-extension.zip) bytes)"
+          echo "Source file: makeitpop-source.zip ($(stat -f%z makeitpop-source.zip 2>/dev/null || stat -c%s makeitpop-source.zip) bytes)"
+          echo ""
+          echo "--- Approval Notes ---"
+          echo "Hello, this is the new build and links to the related commit HEAD:"
+          echo "${{ steps.release.outputs.url }}"
+          echo ""
+          echo "--- Release Notes (en-US) ---"
+          cat release_notes.txt
+          echo ""
+          echo "--- Full Metadata ---"
+          jq . amo-metadata.json
+          echo ""
+          echo "======================================"
+          echo "=== END DRY RUN ==="
+          echo "======================================"
+
+      - name: Upload to Mozilla Add-ons (real upload)
+        if: ${{ !inputs.dry_run }}
+        uses: kewisch/action-web-ext@v1
+        with:
+          cmd: sign
+          source: makeitpop-extension.zip
+          channel: listed
+          apiKey: ${{ secrets.MOZILLA_JWT_ISSUER }}
+          apiSecret: ${{ secrets.MOZILLA_JWT_SECRET }}
+          addon-guid: ${{ vars.MOZILLA_EXTENSIONS_ID }}
+          amoMetadata: amo-metadata.json
