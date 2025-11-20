@@ -1,9 +1,12 @@
 name: Upload to Mozilla Add-ons
 
 on:
-  release:
-    types: [published]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:  # Manual trigger only
+    inputs:
+      release_tag:
+        description: 'Release tag to reference (e.g., v1.0.3-20251114-192449)'
+        required: true
+        type: string
 
 jobs:
   upload-to-mozilla:
@@ -57,14 +60,8 @@ jobs:
       - name: Get release info
         id: release
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            RELEASE_URL="${{ github.event.release.html_url }}"
-            RELEASE_TAG="${{ github.event.release.tag_name }}"
-          else
-            # For manual dispatch, use latest release or commit
-            RELEASE_URL="https://github.com/${{ github.repository }}/commit/${{ github.sha }}"
-            RELEASE_TAG="manual-${{ github.sha }}"
-          fi
+          RELEASE_TAG="${{ inputs.release_tag }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${RELEASE_TAG}"
           echo "url=${RELEASE_URL}" >> $GITHUB_OUTPUT
           echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
 
