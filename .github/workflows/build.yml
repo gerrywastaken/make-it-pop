@@ -96,7 +96,8 @@ jobs:
         with:
           header: extension-build
           message: |
-            [makeitpop-build-${{ steps.sanitize.outputs.short_sha }}.zip](${{ steps.artifact.outputs.artifact-url }}) - [${{ steps.sanitize.outputs.short_sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha }})
+            ext:  [makeitpop-build-${{ steps.sanitize.outputs.short_sha }}.zip](${{ steps.artifact.outputs.artifact-url }})
+            sha:  [${{ steps.sanitize.outputs.short_sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha }})
 
       - name: Get version from manifest
         id: version
