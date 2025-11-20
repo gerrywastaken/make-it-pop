@@ -88,20 +88,21 @@ jobs:
           echo "Tag: ${RELEASE_TAG}"
           echo "URL: ${RELEASE_URL}"
 
-          # Get release notes/changelog from the GitHub release
-          RELEASE_NOTES=$(gh release view ${{ steps.extract_tag.outputs.tag }} \
-            --json body \
-            --jq '.body' \
-            -R ${{ github.repository }})
-
           echo "url=${RELEASE_URL}" >> $GITHUB_OUTPUT
           echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
 
-          # Save release notes to a file for later use (multiline handling)
-          echo "$RELEASE_NOTES" > release_notes.txt
+      - name: Extract changelog for this release
+        run: |
+          echo "=== Extracting Release Notes from CHANGELOG.md ==="
 
-          echo ""
-          echo "=== Release Notes/Changelog ==="
+          # Extract the latest version section from CHANGELOG.md
+          # Find content between first ## [ and second ## [
+          awk '/^## \[/{flag++; if(flag==2) exit} flag==1 && !/^## \[/' CHANGELOG.md > release_notes.txt
+
+          # Remove any trailing empty lines
+          sed -i -e :a -e '/^\s*$/d;N;ba' release_notes.txt || true
+
+          echo "Extracted release notes:"
           cat release_notes.txt
 
       - name: Prepare AMO metadata
