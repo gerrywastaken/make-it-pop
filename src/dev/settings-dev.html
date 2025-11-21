@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Make It Pop - Settings (Dev Mode)</title>
-  <link rel="stylesheet" href="../settings/settings.css">
+  <link rel="stylesheet" href="/settings/settings.css">
   <style>
     /* Dev mode indicator */
     .dev-banner {
@@ -175,9 +175,9 @@
   <!-- Load browser mock FIRST, then settings -->
   <script type="module">
     // Import and execute the mock first
-    import './browser-mock.ts';
+    import '/dev/browser-mock.ts';
     // Then import settings
-    import '../settings/settings.ts';
+    import '/settings/settings.ts';
   </script>
 </body>
 </html>
