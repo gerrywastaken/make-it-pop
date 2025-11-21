@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch",
+    "dev:ui": "vite --config vite.config.dev.ts",
     "prebuild": "node scripts/generate-version.js",
     "build": "ENTRY=content vite build && ENTRY=popup vite build && ENTRY=background vite build && ENTRY=settings vite build",
     "test": "vitest"
