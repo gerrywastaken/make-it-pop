@@ -6,13 +6,13 @@ All notable changes to Make It Pop will be documented in this file.
 
 ### Added
 - Changelog documenting all version history with links to PRs and commits (yes, this thing you're reading right now)... [#35](https://github.com/gerrywastaken/make-it-pop/pull/35)
+- User-controlled permission system with "all-sites" option for easier setup... [fbf3c1d](https://github.com/gerrywastaken/make-it-pop/commit/fbf3c1d)
+- Manual permission request button for domains that need explicit permission... [21630fc](https://github.com/gerrywastaken/make-it-pop/commit/21630fc)
+- Tray icon permission notification using optional host permissions... [2ce6e54](https://github.com/gerrywastaken/make-it-pop/commit/2ce6e54)
 
 ### Fixed
 - Firefox permission request issues causing the extension to not work properly on some sites... [#34](https://github.com/gerrywastaken/make-it-pop/pull/34)
-- Added user-controlled permission system with "all-sites" option for easier setup... [fbf3c1d](https://github.com/gerrywastaken/make-it-pop/commit/fbf3c1d)
-- Manual permission request button for domains that need explicit permission... [21630fc](https://github.com/gerrywastaken/make-it-pop/commit/21630fc)
 - Firefox compatibility for background script... [659a546](https://github.com/gerrywastaken/make-it-pop/commit/659a546)
-- Tray icon permission notification using optional host permissions... [2ce6e54](https://github.com/gerrywastaken/make-it-pop/commit/2ce6e54)
 
 ## [1.0.2] - 2025-11-14
 
@@ -34,6 +34,7 @@ All notable changes to Make It Pop will be documented in this file.
 - Test writing philosophy guide for future development... [dec6acf](https://github.com/gerrywastaken/make-it-pop/commit/dec6acf)
 - Raw mode for phrase editing in group settings... [bfe8f78](https://github.com/gerrywastaken/make-it-pop/commit/bfe8f78)
 - Case-sensitive matching for all-uppercase phrases... [6d43795](https://github.com/gerrywastaken/make-it-pop/commit/6d43795)
+- Domain-specific popup (shows configuration for current site instead of global settings)... [20f9995](https://github.com/gerrywastaken/make-it-pop/commit/20f9995)
 - Continuous Integration builds on all branches, releases only on main... [#25](https://github.com/gerrywastaken/make-it-pop/pull/25)
 - Automatic version injection with git commit hash... [1e89a5c](https://github.com/gerrywastaken/make-it-pop/commit/1e89a5c)
 
@@ -50,7 +51,6 @@ All notable changes to Make It Pop will be documented in this file.
 
 ### Changed
 - Redesigned popup with better domain configuration user experience... [#23](https://github.com/gerrywastaken/make-it-pop/pull/23)
-- Popup is now domain-specific instead of global... [20f9995](https://github.com/gerrywastaken/make-it-pop/commit/20f9995)
 - Unified desktop user interface with inline editing... [9846e8c](https://github.com/gerrywastaken/make-it-pop/commit/9846e8c)
 - Simplified domain matching user experience with explicit match modes... [#22](https://github.com/gerrywastaken/make-it-pop/pull/22)
 - Refactored version injection to use centralized version.ts file... [5f9c794](https://github.com/gerrywastaken/make-it-pop/commit/5f9c794)
