@@ -23,6 +23,12 @@
       cursor: pointer;
       text-decoration: underline;
     }
+    .dev-banner-nav {
+      display: inline-block;
+      margin-left: 15px;
+      padding-left: 15px;
+      border-left: 1px solid rgba(255,255,255,0.3);
+    }
 
     /* Make the dev version wider for easier testing */
     body {
@@ -34,6 +40,10 @@
   <div class="dev-banner">
     Development Mode - Browser APIs are mocked
     <a href="javascript:location.reload()">Reload</a>
+    <span class="dev-banner-nav">
+      <a href="/dev/index.html">🏠 Home</a>
+      <a href="/dev/settings-dev.html">⚙️ Settings</a>
+    </span>
   </div>
 
   <div class="header">
