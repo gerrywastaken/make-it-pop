@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Make It Pop - Popup (Dev Mode)</title>
+  <link rel="stylesheet" href="/popup.css">
+  <style>
+    /* Dev mode indicator */
+    .dev-banner {
+      background: linear-gradient(90deg, #f97316, #ea580c);
+      color: white;
+      padding: 8px 16px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .dev-banner a {
+      color: white;
+      margin-left: 10px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* Make the dev version wider for easier testing */
+    body {
+      width: 360px;
+    }
+  </style>
+</head>
+<body>
+  <div class="dev-banner">
+    Development Mode - Browser APIs are mocked
+    <a href="javascript:location.reload()">Reload</a>
+  </div>
+
+  <div class="header">
+    <h2>Make It Pop</h2>
+    <div class="current-domain">
+      <span class="status-indicator" id="statusIndicator"></span>
+      <span id="currentDomain">Loading...</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="toggle-container">
+      <span class="toggle-label">
+        <strong>Extension</strong>
+      </span>
+      <label class="toggle-switch">
+        <input type="checkbox" id="enableToggle">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="activeGroupsCount">0</div>
+        <div class="stat-label">Active Groups</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="domainsCount">0</div>
+        <div class="stat-label">Domains</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Domain Configuration Section -->
+  <div class="section" id="domainConfigSection">
+    <div class="section-title">Domain Configuration</div>
+    <div id="domainConfig"></div>
+  </div>
+
+  <div class="quick-actions">
+    <button class="primary" id="addDomain">+ Add This Domain</button>
+    <button class="danger" id="removeDomain" style="display: none;">Remove This Domain</button>
+    <button class="secondary" id="openSettings">⚙️ Open Settings</button>
+  </div>
+
+  <!-- Load browser mock FIRST, then popup -->
+  <script type="module">
+    // Import and execute the mock first
+    import '/dev/browser-mock.ts';
+    // Then import popup
+    import '/popup.ts';
+  </script>
+</body>
+</html>

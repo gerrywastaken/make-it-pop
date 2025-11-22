@@ -2,11 +2,13 @@
 // This allows developing the settings UI without loading the full extension
 
 interface MockStorage {
+  enabled?: boolean;
   groups: any[];
   domains: any[];
 }
 
 const mockStorage: MockStorage = {
+  enabled: true,
   groups: [
     {
       id: 'mock-group-1',
@@ -100,7 +102,30 @@ const mockBrowserAPI = {
       version: '1.0.3-dev',
       name: 'Make It Pop (Dev)',
       description: 'Development mode'
-    })
+    }),
+    openOptionsPage: () => {
+      console.log('[Mock] runtime.openOptionsPage() called');
+      alert('[Dev Mock] Opening settings page...\n\nIn production, this would open the extension settings.');
+      // In dev mode, could open settings-dev.html in a new tab
+      window.open('/dev/settings-dev.html', '_blank');
+    }
+  },
+  tabs: {
+    query: async (queryInfo: any): Promise<any[]> => {
+      console.log('[Mock] tabs.query:', queryInfo);
+      // Return a mock tab with a test URL
+      return [{
+        id: 1,
+        url: 'https://github.com/anthropics/claude-code',
+        active: true,
+        windowId: 1,
+        title: 'Mock Tab - GitHub'
+      }];
+    },
+    reload: async (tabId: number): Promise<void> => {
+      console.log('[Mock] tabs.reload:', tabId);
+      console.log('[Mock] Tab reload simulated - in a real extension this would reload the tab');
+    }
   }
 };
 
