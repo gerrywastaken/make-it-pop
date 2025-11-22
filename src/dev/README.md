@@ -1,6 +1,6 @@
 # UI Development Mode
 
-This directory contains files for developing the settings UI in standalone mode without loading the full browser extension.
+This directory contains files for developing the extension UI in standalone mode without loading the full browser extension.
 
 ## Quick Start
 
@@ -8,12 +8,15 @@ This directory contains files for developing the settings UI in standalone mode 
 pnpm dev:ui
 ```
 
-Then open http://localhost:5173/dev/settings-dev.html in your browser.
+Then open:
+- **Settings UI**: http://localhost:5173/dev/settings-dev.html
+- **Popup UI**: http://localhost:5173/dev/popup-dev.html
 
 ## What's Included
 
-- **browser-mock.ts** - Mocks `chrome.storage.local`, `chrome.permissions`, and `chrome.runtime` APIs with sample data
-- **settings-dev.html** - Dev entry point that loads mocks before the settings code
+- **browser-mock.ts** - Mocks `chrome.storage.local`, `chrome.permissions`, `chrome.runtime`, and `chrome.tabs` APIs with sample data
+- **settings-dev.html** - Dev entry point for testing the settings page
+- **popup-dev.html** - Dev entry point for testing the popup UI
 - **version.ts** - Mock version constants for dev mode
 
 ## Features

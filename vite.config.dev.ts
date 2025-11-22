@@ -8,7 +8,7 @@ export default defineConfig({
   publicDir: false,
   server: {
     port: 5173,
-    open: false, // Set to '/dev/settings-dev.html' to auto-open browser
+    open: false, // Set to '/dev/settings-dev.html' or '/dev/popup-dev.html' to auto-open browser
   },
   resolve: {
     alias: {
@@ -25,7 +25,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    // Only scan the dev HTML file, not popup.html or settings.html
-    entries: ['dev/settings-dev.html'],
+    // Only scan the dev HTML files, not popup.html or settings.html
+    entries: ['dev/settings-dev.html', 'dev/popup-dev.html'],
   },
 });
