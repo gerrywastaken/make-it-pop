@@ -17,4 +17,15 @@ export default defineConfig({
       '../version': resolve(__dirname, 'src/dev/version.ts'),
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'src/dev/settings-dev.html'),
+      },
+    },
+  },
+  optimizeDeps: {
+    // Only scan the dev HTML file, not popup.html or settings.html
+    entries: ['dev/settings-dev.html'],
+  },
 });
