@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Make It Pop - Dev UI Launcher</title>
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #000000;
+      --border-color: #ddd;
+      --card-bg: #f9f9f9;
+      --primary-color: #f97316;
+      --secondary-color: #ea580c;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #1e1e1e;
+        --text-color: #e0e0e0;
+        --border-color: #444;
+        --card-bg: #2a2a2a;
+        --primary-color: #fb923c;
+        --secondary-color: #f97316;
+      }
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      padding: 40px 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 10px;
+      background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 16px;
+    }
+
+    .dev-notice {
+      background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 40px;
+      font-weight: 600;
+    }
+
+    .ui-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .ui-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      text-decoration: none;
+      color: var(--text-color);
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .ui-card:hover {
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .ui-card-icon {
+      font-size: 40px;
+      line-height: 1;
+    }
+
+    .ui-card-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .ui-card-description {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .ui-card-size {
+      font-size: 12px;
+      color: #999;
+      margin-top: auto;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .info-section {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .info-section h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .info-section ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .info-section li {
+      padding: 6px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .info-section li:before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    .footer {
+      text-align: center;
+      color: #999;
+      font-size: 14px;
+      margin-top: 40px;
+    }
+
+    code {
+      background: var(--card-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Make It Pop</h1>
+    <p class="subtitle">Development UI Launcher</p>
+  </div>
+
+  <div class="dev-notice">
+    ⚡ Development Mode - Browser APIs are mocked with sample data
+  </div>
+
+  <div class="ui-grid">
+    <a href="/dev/popup-dev.html" class="ui-card">
+      <div class="ui-card-icon">🎨</div>
+      <div class="ui-card-title">Popup UI</div>
+      <div class="ui-card-description">
+        Test the extension popup that appears when clicking the browser extension icon.
+        Shows domain status, quick toggles, and configuration options.
+      </div>
+      <div class="ui-card-size">Typical size: 360×500px</div>
+    </a>
+
+    <a href="/dev/settings-dev.html" class="ui-card">
+      <div class="ui-card-icon">⚙️</div>
+      <div class="ui-card-title">Settings Page</div>
+      <div class="ui-card-description">
+        Test the full settings page for managing groups, domains, and extension configuration.
+        Access via browser extension options or toolbar button.
+      </div>
+      <div class="ui-card-size">Full page (responsive)</div>
+    </a>
+  </div>
+
+  <div class="info-section">
+    <h2>Features</h2>
+    <ul>
+      <li>Hot reload for CSS and TypeScript changes</li>
+      <li>Pre-populated with mock data (3 groups, 2 domains)</li>
+      <li>All storage operations work in-memory</li>
+      <li>No need to reload browser extension during development</li>
+    </ul>
+  </div>
+
+  <div class="info-section">
+    <h2>Mock Data</h2>
+    <ul>
+      <li>Current tab: <code>github.com</code></li>
+      <li>3 sample groups (Key Terms, Important Actions, Positive Indicators)</li>
+      <li>2 configured domains (github.com, example.com)</li>
+      <li>Extension enabled by default</li>
+    </ul>
+    <p style="margin-top: 12px; font-size: 14px; color: #666;">
+      Edit <code>src/dev/browser-mock.ts</code> to customize the mock data.
+    </p>
+  </div>
+
+  <div class="footer">
+    Press <code>Ctrl+R</code> or <code>Cmd+R</code> to reload • Changes auto-reload with Vite HMR
+  </div>
+</body>
+</html>

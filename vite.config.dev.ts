@@ -8,7 +8,7 @@ export default defineConfig({
   publicDir: false,
   server: {
     port: 5173,
-    open: false, // Set to '/dev/settings-dev.html' or '/dev/popup-dev.html' to auto-open browser
+    open: '/dev/index.html', // Opens the UI launcher by default
   },
   resolve: {
     alias: {
