@@ -531,6 +531,8 @@ button[onclick*="editDomain"]:hover {
 
 .domain-info strong {
   color: var(--text-color);
+  display: inline;
+  margin-top: 0;
 }
 
 /* Group Selection */
