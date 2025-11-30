@@ -1,0 +1,88 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.4) or leave empty to use manifest.json version'
+        required: false
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test -- --run
+
+      - name: Build extension
+        run: pnpm run build
+
+      - name: Get version
+        id: version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "Using provided version: ${VERSION}"
+          else
+            VERSION=$(cat dist/manifest.json | grep -o '"version": *"[^"]*"' | grep -o '[0-9][^"]*')
+            echo "Using version from manifest.json: ${VERSION}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Check if tag already exists
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.version.outputs.tag }}"; then
+            echo "Error: Tag ${{ steps.version.outputs.tag }} already exists!"
+            exit 1
+          fi
+
+      - name: Create extension zip
+        run: |
+          cd dist
+          zip -r ../makeitpop-extension.zip .
+          cd ..
+
+      - name: Extract changelog for this version
+        run: |
+          # Extract the latest version section from CHANGELOG.md
+          awk '/^## \[/{flag++; if(flag==2) exit} flag==1 && !/^## \[/' CHANGELOG.md > release_notes.txt
+
+          echo "Release notes extracted:"
+          cat release_notes.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Make It Pop ${{ steps.version.outputs.version }}
+          body_path: release_notes.txt
+          files: makeitpop-extension.zip
+          draft: false
+          prerelease: false
+
+      - name: Show release URL
+        run: |
+          echo "✅ Release created successfully!"
+          echo "🔗 https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}"
