@@ -39,8 +39,8 @@ jobs:
           echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
       - name: Checkout code
         uses: actions/checkout@v4
-        # Checkout main to get the latest CHANGELOG.md (not the release tag)
-        # The release tag is only used to download artifacts and generate URLs
+        with:
+          ref: ${{ steps.extract_tag.outputs.tag }}
 
       - name: Download release artifacts
         env:
