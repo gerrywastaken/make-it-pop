@@ -3,6 +3,15 @@
 ## Overview
 A cross-browser (Chrome/Firefox) extension that highlights multi-word phrases on web pages using customizable color groups. Users can assign different phrase groups to specific domains with support for light/dark mode.
 
+CRITICAL: Pre-PR Checklist
+
+Before providing ANY PR creation commands (gh pr create or PR links):
+
+    REBASE: git fetch origin main && git rebase origin/main && git push --force-with-lease
+    See Pull Request Workflow for fixup/squash decisions
+
+Why: A PR outdated at inception is pointless. See PR Workflow section for full reasoning.
+
 ## Core Features
 
 ### 1. Groups
@@ -229,6 +238,63 @@ interface StorageData {
 - Statistics (phrases found, pages highlighted)
 
 ## Development Notes
+
+## Pull Request Workflow
+
+**Core Principle:** Keep main's git history clean and atomic while preserving review context during the PR process.
+
+**Why this matters:**
+- Fixup commits let you refine work-in-progress commits before they land on main
+- During review, stable commit history is essential - GitHub's review interface depends on it
+- Autosquashing rewrites history, which breaks: comment anchoring, incremental review flow, and collaboration between reviewers
+- Only after review is complete should commits be cleaned up via autosquash for a clean main history
+
+When creating a pull request:
+
+1. Use fixup commits appropriately - for refining unmerged commits:
+   * Use fixup when: Making corrections to a commit that exists on the current unmerged branch
+     - Example: Forgot to add a test for the code you just committed → `git commit --fixup=<hash>`
+     - Example: Typo or bug in code from a previous commit on this branch → `git commit --fixup=<hash>`
+     - Example: Reverting a mistake from this branch → `git revert -n <hash> && git commit --fixup=<hash>`
+   - **Use regular commit when:** Adding new logical work, even if related
+     - Example: First commit fixes a code bug, then discover deployment config also needs updating → regular commit
+     - Example: Different file, different concern, or new issue discovered → regular commit
+   - **Rule of thumb:** Fixup is for perfecting commits before merge. If it's new work or a separate concern, use a regular commit.
+   - **During review:** Fixup commits are fine for addressing reviewer feedback. The stable commit hashes are what matters - don't autosquash until review is complete.
+
+2. **Check branch is up-to-date with main before PR creation:**
+   - Always rebase onto latest main before providing the PR creation link
+   - A PR that's outdated at inception is pointless
+   ```bash
+   git fetch origin main && git rebase origin/main
+   git push --force-with-lease
+   ```
+
+3. **Provide a concise PR description** following this format:
+
+   <example>
+   To checkout locally:
+   ```bash
+   git fetch origin BRANCH_NAME
+   git checkout BRANCH_NAME
+   ```
+
+   To create PR via CLI:
+   ```bash
+   gh pr create --head BRANCH_NAME --base main --title "Fix TAILSCALE_HOSTNAME configuration" --body "Fixes 502 errors on /raw routes by properly configuring TAILSCALE_HOSTNAME.\n\n**Why:** Hardcoded hostname violated fail-fast principles and caused silent failures."
+   ```
+
+   or [create pr](https://github.com/gerrywastaken/REPO/pull/new/BRANCH_NAME)
+   </example>
+
+4. **Before merge, rebase with autosquash to clean up fixup commits:**
+   ```bash
+   git fetch origin main && git rebase -i --autosquash origin/main
+   git push --force-with-lease
+   ```
+   **ONLY do this when the user explicitly asks you to clean up commits. Never do this automatically - the user decides when review is complete.**
+
+This ensures the PR is clean, well-documented, and ready for review.
 
 ### Package Management (IMPORTANT)
 **CRITICAL**: When adding, removing, or updating dependencies via `pnpm add`, `pnpm remove`, or `pnpm update`, you MUST commit both `package.json` AND `pnpm-lock.yaml` together. The CI environment uses `--frozen-lockfile` which will fail if these files are out of sync.
