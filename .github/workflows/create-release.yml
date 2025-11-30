@@ -53,7 +53,7 @@ jobs:
 
       - name: Check if tag already exists
         run: |
-          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.version.outputs.tag }}"; then
+          if git ls-remote --tags origin | grep -qE "\brefs/tags/${{ steps.version.outputs.tag }}$"; then
             echo "Error: Tag ${{ steps.version.outputs.tag }} already exists!"
             exit 1
           fi
