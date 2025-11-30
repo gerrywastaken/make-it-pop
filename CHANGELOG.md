@@ -10,6 +10,9 @@ All notable changes to Make It Pop will be documented in this file.
 - Manual permission request button for domains that need explicit permission... [21630fc](https://github.com/gerrywastaken/make-it-pop/commit/21630fc)
 - Tray icon permission notification using optional host permissions... [2ce6e54](https://github.com/gerrywastaken/make-it-pop/commit/2ce6e54)
 
+### Changed
+- Improved developer experience with standalone UI development environment and Mozilla Add-ons automated upload workflows... [506e64a](https://github.com/gerrywastaken/make-it-pop/commit/506e64a), [903d40b](https://github.com/gerrywastaken/make-it-pop/commit/903d40b)
+
 ### Fixed
 - Firefox permission request issues causing the extension to not work properly on some sites... [#34](https://github.com/gerrywastaken/make-it-pop/pull/34)
 - Firefox compatibility for background script... [659a546](https://github.com/gerrywastaken/make-it-pop/commit/659a546)
