@@ -75,21 +75,6 @@ jobs:
           path: dist/
           retention-days: 30
 
-      - name: Create extension zip (for releases)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: |
-          cd dist
-          zip -r ../makeitpop-extension.zip .
-          cd ..
-
-      - name: Upload extension zip (for releases)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: extension-zip-${{ steps.sanitize.outputs.branch }}-${{ github.sha }}
-          path: makeitpop-extension.zip
-          retention-days: 30
-
       - name: Comment PR with build link
         if: github.event_name == 'pull_request'
         uses: gerrywastaken/sticky-pull-request-comment@main
@@ -98,30 +83,3 @@ jobs:
           message: |
             ext:  [makeitpop-build-${{ steps.sanitize.outputs.short_sha }}.zip](${{ steps.artifact.outputs.artifact-url }})
             sha:  [${{ steps.sanitize.outputs.short_sha }}](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.pull_request.head.sha }})
-
-      - name: Get version from manifest
-        id: version
-        run: |
-          VERSION=$(cat dist/manifest.json | grep -o '"version": *"[^"]*"' | grep -o '[0-9][^"]*')
-          TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
-          RELEASE_TAG="v${VERSION}-${TIMESTAMP}"
-          echo "tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
-          echo "Release tag: ${RELEASE_TAG}"
-
-      - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: Extension Build ${{ steps.version.outputs.tag }}
-          body: |
-            Automated extension build from commit ${{ github.sha }}
-
-            **Branch:** ${{ github.ref_name }}
-            **Build Date:** ${{ github.event.head_commit.timestamp }}
-            **Commit:** ${{ github.event.head_commit.message }}
-
-            Download `makeitpop-extension.zip` below and load it as an unpacked extension in Chrome/Firefox.
-          files: makeitpop-extension.zip
-          draft: false
-          prerelease: false
