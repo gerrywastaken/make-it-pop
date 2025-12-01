@@ -52,6 +52,24 @@ Why: A PR outdated at inception is pointless. See PR Workflow section for full r
 - **Target**: Manifest V3
 - **Browsers**: Chrome, Firefox
 
+### Development URLs
+
+When running `pnpm dev:ui`, the Vite dev server runs on `http://localhost:5173` with `src/` as the root directory.
+
+**Always use the `/dev/` URLs for development:**
+- ✅ **`http://localhost:5173/dev/settings-dev.html`** - Settings UI with mocked browser APIs and sample data
+- ✅ **`http://localhost:5173/dev/popup-dev.html`** - Popup UI with mocked browser APIs
+
+**Do NOT use production files directly in dev server:**
+- ❌ ~~`http://localhost:5173/settings/settings.html`~~ - Production file (no mocks, will show empty/broken)
+- ❌ ~~`http://localhost:5173/popup/popup.html`~~ - Production file (no mocks, will show empty/broken)
+
+**Why:** The `/dev/*-dev.html` files are development wrappers that:
+1. Load `/dev/browser-mock.ts` first (mocks `chrome`/`browser` APIs, provides sample data)
+2. Then load the actual component files (`/settings/settings.ts`, etc.)
+
+The production files (`/settings/settings.html`, `/popup/popup.html`) are built into the browser extension and use real browser APIs.
+
 ### File Structure
 ```
 makeitpop/
