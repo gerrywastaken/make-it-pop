@@ -22,14 +22,14 @@ export function updateGroupsState(newGroups: Group[]) {
 export function createGroupCard(g: Group): HTMLElement {
   // Create card container
   const card = createElement('div', {
-    className: `card ${g.id ? 'viewing' : 'editing'}${!g.enabled ? ' disabled' : ''}`,
+    className: `card${!g.enabled ? ' disabled' : ''}`,
     attributes: { 'data-id': g.id || '' }
   });
 
   // Card header with toggle and title
   const header = createElement('div', { className: 'card-header' });
 
-  // Toggle switch
+  // Toggle switch with auto-save
   const toggleLabel = createElement('label', { className: 'toggle-switch' });
   const toggleInput = createElement('input', {
     attributes: {
@@ -39,11 +39,12 @@ export function createGroupCard(g: Group): HTMLElement {
     },
     className: 'toggle-group-enabled'
   });
+  toggleInput.addEventListener('change', () => autoSaveGroup(card));
   const toggleSlider = createElement('span', { className: 'toggle-slider' });
   toggleLabel.appendChild(toggleInput);
   toggleLabel.appendChild(toggleSlider);
 
-  // Group name
+  // Group name with auto-save on blur
   const groupName = createElement('div', { className: 'group-name' });
   const nameInput = createElement('input', {
     attributes: {
@@ -52,18 +53,18 @@ export function createGroupCard(g: Group): HTMLElement {
       placeholder: 'Group name'
     }
   });
-  nameInput.disabled = true;
+  nameInput.addEventListener('blur', () => autoSaveGroup(card));
   groupName.appendChild(nameInput);
 
-  // Action buttons (edit only in view mode)
+  // Delete button in header
   const actions = createElement('div', { className: 'card-actions' });
-  const editBtn = createElement('button', {
-    textContent: '✏️',
+  const deleteBtn = createElement('button', {
+    textContent: '×',
     className: 'btn-icon',
-    attributes: { title: 'Edit' }
+    attributes: { title: 'Delete group' }
   });
-  editBtn.addEventListener('click', () => editGroup(card));
-  actions.appendChild(editBtn);
+  deleteBtn.addEventListener('click', () => deleteGroup(g.id));
+  actions.appendChild(deleteBtn);
 
   header.appendChild(toggleLabel);
   header.appendChild(groupName);
@@ -152,9 +153,9 @@ export function createGroupCard(g: Group): HTMLElement {
   lightColorInputs.appendChild(lightTextGroup);
   lightModePreview.appendChild(lightColorInputs);
 
-  // Sync light mode inputs
-  syncColorInputs(lightBgColorInput, lightBgHexInput);
-  syncColorInputs(lightTextColorInput, lightTextHexInput);
+  // Sync light mode inputs with auto-save
+  syncColorInputs(lightBgColorInput, lightBgHexInput, () => autoSaveGroup(card));
+  syncColorInputs(lightTextColorInput, lightTextHexInput, () => autoSaveGroup(card));
   lightBgColorInput.addEventListener('input', () => updatePreviewColors(lightPreview, lightBgColorInput.value, lightTextColorInput.value));
   lightTextColorInput.addEventListener('input', () => updatePreviewColors(lightPreview, lightBgColorInput.value, lightTextColorInput.value));
 
@@ -214,9 +215,9 @@ export function createGroupCard(g: Group): HTMLElement {
   darkColorInputs.appendChild(darkTextGroup);
   darkModePreview.appendChild(darkColorInputs);
 
-  // Sync dark mode inputs
-  syncColorInputs(darkBgColorInput, darkBgHexInput);
-  syncColorInputs(darkTextColorInput, darkTextHexInput);
+  // Sync dark mode inputs with auto-save
+  syncColorInputs(darkBgColorInput, darkBgHexInput, () => autoSaveGroup(card));
+  syncColorInputs(darkTextColorInput, darkTextHexInput, () => autoSaveGroup(card));
   darkBgColorInput.addEventListener('input', () => updatePreviewColors(darkPreview, darkBgColorInput.value, darkTextColorInput.value));
   darkTextColorInput.addEventListener('input', () => updatePreviewColors(darkPreview, darkBgColorInput.value, darkTextColorInput.value));
 
@@ -253,6 +254,8 @@ export function createGroupCard(g: Group): HTMLElement {
       if (countSpan) {
         countSpan.textContent = `${count} phrase${count !== 1 ? 's' : ''}`;
       }
+      // Auto-save after deleting phrase
+      autoSaveGroup(card);
     });
     phraseItem.appendChild(deleteBtn);
     phrasesDisplay.appendChild(phraseItem);
@@ -286,6 +289,8 @@ export function createGroupCard(g: Group): HTMLElement {
         if (countSpan) {
           countSpan.textContent = `${count} phrase${count !== 1 ? 's' : ''}`;
         }
+        // Auto-save after deleting phrase
+        autoSaveGroup(card);
       });
       phraseItem.appendChild(deleteBtn);
       phrasesDisplay.appendChild(phraseItem);
@@ -297,6 +302,9 @@ export function createGroupCard(g: Group): HTMLElement {
       if (countSpan) {
         countSpan.textContent = `${count} phrase${count !== 1 ? 's' : ''}`;
       }
+
+      // Auto-save after adding phrase
+      autoSaveGroup(card);
     }
   };
 
@@ -313,44 +321,55 @@ export function createGroupCard(g: Group): HTMLElement {
   phrasesSection.appendChild(phraseInputArea);
   card.appendChild(phrasesSection);
 
-  // Card footer with actions
-  const cardFooter = createElement('div', { className: 'card-footer' });
-  const deleteBtn = createElement('button', {
-    textContent: 'Delete Group',
-    className: 'btn btn-danger'
-  });
-  deleteBtn.addEventListener('click', () => deleteGroup(g.id));
-
-  const footerActions = createElement('div', { className: 'card-footer-actions' });
-  const cancelBtn = createElement('button', {
-    textContent: 'Cancel',
-    className: 'btn btn-secondary cancel-group-btn'
-  });
-  const saveBtn = createElement('button', {
-    textContent: 'Save Changes',
-    className: 'btn btn-primary save-group-btn'
-  });
-
-  cancelBtn.addEventListener('click', () => cancelGroupEdit(card));
-  saveBtn.addEventListener('click', () => saveGroupFromCard(card));
-
-  footerActions.appendChild(cancelBtn);
-  footerActions.appendChild(saveBtn);
-  cardFooter.appendChild(deleteBtn);
-  cardFooter.appendChild(footerActions);
-  card.appendChild(cardFooter);
-
   return card;
 }
 
 // Helper functions for the new group card design
-function editGroup(card: HTMLElement) {
-  card.classList.remove('viewing');
-  card.classList.add('editing');
+async function autoSaveGroup(card: HTMLElement) {
+  const id = card.getAttribute('data-id');
+  if (!id) return; // Don't save if this is a new group without an ID yet
+
+  const group = groups.find(g => g.id === id);
+  if (!group) return;
+
+  // Get current values from the card
   const nameInput = card.querySelector('.group-name input') as HTMLInputElement;
-  if (nameInput) {
-    nameInput.disabled = false;
+  const toggleInput = card.querySelector('.toggle-group-enabled') as HTMLInputElement;
+  const lightBgHex = card.querySelector('.edit-group-light-bg-hex') as HTMLInputElement;
+  const lightTextHex = card.querySelector('.edit-group-light-text-hex') as HTMLInputElement;
+  const darkBgHex = card.querySelector('.edit-group-dark-bg-hex') as HTMLInputElement;
+  const darkTextHex = card.querySelector('.edit-group-dark-text-hex') as HTMLInputElement;
+
+  const name = nameInput?.value.trim();
+  if (!name) {
+    showToast('Group name is required', 'warning');
+    return;
   }
+
+  // Collect phrases
+  const phraseTags = card.querySelectorAll('.phrases-display .phrase-item');
+  const phrases = Array.from(phraseTags).map(tag => {
+    const text = tag.querySelector('.phrase-text')?.textContent || '';
+    return text.trim();
+  }).filter(Boolean);
+
+  // Update group in memory
+  const index = groups.findIndex(g => g.id === id);
+  if (index !== -1) {
+    groups[index] = {
+      ...groups[index],
+      name,
+      enabled: toggleInput?.checked ?? group.enabled,
+      lightBgColor: lightBgHex?.value || group.lightBgColor,
+      lightTextColor: lightTextHex?.value || group.lightTextColor,
+      darkBgColor: darkBgHex?.value || group.darkBgColor,
+      darkTextColor: darkTextHex?.value || group.darkTextColor,
+      phrases,
+    };
+  }
+
+  // Save to storage
+  await saveGroups(groups);
 }
 
 async function deleteGroup(id: string) {
@@ -396,7 +415,18 @@ function updatePreviewColors(preview: HTMLElement, bgColor: string, textColor: s
 }
 
 
-function syncColorInputs(colorInput: HTMLInputElement, hexInput: HTMLInputElement) {
+function syncColorInputs(colorInput: HTMLInputElement, hexInput: HTMLInputElement, onSave?: () => void) {
+  colorInput.addEventListener('change', () => {
+    hexInput.value = colorInput.value;
+    if (onSave) onSave();
+  });
+  hexInput.addEventListener('change', () => {
+    if (/^#[0-9A-Fa-f]{6}$/.test(hexInput.value)) {
+      colorInput.value = hexInput.value;
+      if (onSave) onSave();
+    }
+  });
+  // Still sync on input for immediate preview update
   colorInput.addEventListener('input', () => {
     hexInput.value = colorInput.value;
   });
@@ -405,89 +435,4 @@ function syncColorInputs(colorInput: HTMLInputElement, hexInput: HTMLInputElemen
       colorInput.value = hexInput.value;
     }
   });
-}
-
-async function saveGroupFromCard(card: HTMLElement) {
-  const id = card.getAttribute('data-id');
-
-  const nameInput = card.querySelector('.edit-group-name') as HTMLInputElement;
-  const lightBgHex = card.querySelector('.edit-group-light-bg-hex') as HTMLInputElement;
-  const lightTextHex = card.querySelector('.edit-group-light-text-hex') as HTMLInputElement;
-  const darkBgHex = card.querySelector('.edit-group-dark-bg-hex') as HTMLInputElement;
-  const darkTextHex = card.querySelector('.edit-group-dark-text-hex') as HTMLInputElement;
-
-  const name = nameInput.value.trim();
-
-  // Check if we're in raw mode or normal mode
-  const rawModeContainer = card.querySelector('.phrase-raw-mode') as HTMLElement;
-  const isRawMode = rawModeContainer && rawModeContainer.style.display !== 'none';
-
-  let phrases: string[];
-  if (isRawMode) {
-    // Collect phrases from textarea (raw mode)
-    const rawTextarea = card.querySelector('.phrase-raw-textarea') as HTMLTextAreaElement;
-    phrases = rawTextarea.value
-      .split('\n')
-      .map(p => p.trim())
-      .filter(Boolean);
-  } else {
-    // Collect phrases from tags (normal mode)
-    const phraseTags = card.querySelectorAll('.edit-phrase-tags .phrase-tag');
-    phrases = Array.from(phraseTags).map(tag => {
-      const text = tag.childNodes[0].textContent || '';
-      return text.trim();
-    }).filter(Boolean);
-  }
-
-  if (!name || phrases.length === 0) {
-    showToast('Name and at least one phrase are required', 'warning');
-    return;
-  }
-
-  if (id) {
-    // Update existing group
-    const index = groups.findIndex(g => g.id === id);
-    if (index !== -1) {
-      groups[index] = {
-        ...groups[index],
-        name,
-        lightBgColor: lightBgHex.value,
-        lightTextColor: lightTextHex.value,
-        darkBgColor: darkBgHex.value,
-        darkTextColor: darkTextHex.value,
-        phrases,
-      };
-    }
-    await saveGroups(groups);
-    showToast('Group updated successfully!');
-  } else {
-    // Add new group
-    const newGroup: Group = {
-      id: crypto.randomUUID(),
-      name,
-      enabled: true,
-      lightBgColor: lightBgHex.value,
-      lightTextColor: lightTextHex.value,
-      darkBgColor: darkBgHex.value,
-      darkTextColor: darkTextHex.value,
-      phrases,
-    };
-    groups.push(newGroup);
-    await saveGroups(groups);
-    showToast('Group added successfully!');
-  }
-
-  render();
-}
-
-function cancelGroupEdit(card: HTMLElement) {
-  const id = card.getAttribute('data-id');
-  if (id) {
-    // Existing group - switch back to view mode
-    card.classList.remove('editing');
-    card.classList.add('viewing');
-  } else {
-    // New group - remove the card
-    card.remove();
-  }
 }
