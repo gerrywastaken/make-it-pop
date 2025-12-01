@@ -3,6 +3,13 @@ import { resolve } from 'path';
 
 // Vite config for UI development mode
 // Run with: pnpm dev:ui
+//
+// IMPORTANT: Development URLs
+// - ✅ Use: http://localhost:5173/dev/settings-dev.html (has mocked browser APIs)
+// - ✅ Use: http://localhost:5173/dev/popup-dev.html (has mocked browser APIs)
+// - ❌ Don't use: /settings/settings.html or /popup/popup.html (production files, no mocks)
+//
+// The /dev/*-dev.html files load browser-mock.ts first to provide sample data and mock APIs
 export default defineConfig({
   root: 'src', // Use src as root so we can access both dev/ and settings/
   publicDir: false,
