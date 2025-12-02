@@ -315,7 +315,7 @@ async function saveDomainConfig() {
   if (domainIndex !== -1) {
     domains[domainIndex] = currentDomainConfig;
     await browserAPI.storage.local.set({ domains });
-    reloadCurrentTab();
+    // No need to reload - content script listens for storage changes
   }
 }
 
@@ -356,7 +356,7 @@ document.getElementById('enableToggle')!.addEventListener('change', async (e) =>
   const enabled = (e.target as HTMLInputElement).checked;
   await browserAPI.storage.local.set({ enabled });
   updateHeader(enabled);
-  reloadCurrentTab();
+  // No need to reload - content script listens for storage changes
 });
 
 // Event: Add This Domain button
@@ -379,7 +379,7 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
   updateStats();
   renderDomainConfig();
   updateButtons();
-  reloadCurrentTab();
+  // No need to reload - content script listens for storage changes
 });
 
 // Event: Remove This Domain button
@@ -397,7 +397,7 @@ document.getElementById('removeDomain')!.addEventListener('click', async () => {
   updateStats();
   renderDomainConfig();
   updateButtons();
-  reloadCurrentTab();
+  // No need to reload - content script listens for storage changes
 });
 
 // Event: Open Settings button
