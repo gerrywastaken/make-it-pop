@@ -23,6 +23,37 @@ interface Domain {
 
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
+// Debug logging infrastructure
+let debugEnabled = false;
+
+function getTimestamp(): string {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  return `${hours}:${minutes}:${seconds}.${ms}`;
+}
+
+function debugLog(component: string, message: string, data?: any) {
+  if (!debugEnabled) return;
+  const timestamp = getTimestamp();
+  if (data !== undefined) {
+    console.log(`[${timestamp}] [Make It Pop - ${component}] ${message}`, data);
+  } else {
+    console.log(`[${timestamp}] [Make It Pop - ${component}] ${message}`);
+  }
+}
+
+// Expose debug toggle globally
+(window as any).makeItLog = () => {
+  debugEnabled = !debugEnabled;
+  console.log(`[Make It Pop] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+  if (debugEnabled) {
+    console.log('[Make It Pop] Logs will show with format: [HH:MM:SS.mmm] [Component] Message');
+  }
+};
+
 // Inline storage functions to avoid code splitting issues
 async function getGroups(): Promise<Group[]> {
   const data = await browserAPI.storage.local.get('groups');
@@ -276,18 +307,39 @@ export class Highlighter {
 let currentHighlighter: Highlighter | null = null;
 
 async function highlightPage() {
+  debugLog('Content', 'highlightPage() called');
+
   // Check if extension is enabled
   const enabledData = await browserAPI.storage.local.get('enabled');
   const enabled = enabledData.enabled !== false; // Default to true if not set
-  if (!enabled) return;
+  debugLog('Content', 'Extension enabled check', { enabled });
+  if (!enabled) {
+    debugLog('Content', 'Extension disabled, skipping highlighting');
+    return;
+  }
 
   const hostname = window.location.hostname;
   const domains = await getDomains();
+  debugLog('Content', 'Fetched domains', { hostname, domainsCount: domains.length });
 
   const matchedDomain = domains.find(d => matchesDomain(d, hostname));
-  if (!matchedDomain) return;
+  if (!matchedDomain) {
+    debugLog('Content', 'No matching domain configuration found', { hostname });
+    return;
+  }
+  debugLog('Content', 'Matched domain', {
+    domain: matchedDomain.domain,
+    mode: matchedDomain.mode,
+    groupMode: matchedDomain.groupMode,
+    configuredGroups: matchedDomain.groups
+  });
 
   const allGroups = await getGroups();
+  debugLog('Content', 'Fetched groups', {
+    totalGroups: allGroups.length,
+    enabledGroups: allGroups.filter(g => g.enabled).length,
+    groupNames: allGroups.map(g => `${g.name}${g.enabled ? ' ✓' : ' ✗'}`)
+  });
 
   // Step 1: Start with all enabled groups
   let activeGroups = allGroups.filter(g => g.enabled);
@@ -295,6 +347,7 @@ async function highlightPage() {
   // Step 2: Apply domain filters if specified
   if (matchedDomain.groups !== undefined && matchedDomain.groupMode) {
     const groupMode = matchedDomain.groupMode;
+    const beforeFiltering = activeGroups.length;
 
     if (groupMode === 'only') {
       // Include only specified groups (empty array = no groups = no highlights)
@@ -303,10 +356,25 @@ async function highlightPage() {
       // Exclude specified groups (empty array = exclude none = all groups)
       activeGroups = activeGroups.filter(g => !matchedDomain.groups!.includes(g.name));
     }
+
+    debugLog('Content', 'Group filtering applied', {
+      mode: groupMode,
+      configuredGroups: matchedDomain.groups,
+      beforeFiltering,
+      afterFiltering: activeGroups.length,
+      activeGroupNames: activeGroups.map(g => g.name)
+    });
+  } else {
+    debugLog('Content', 'No group filtering (using all enabled groups)', {
+      activeGroupNames: activeGroups.map(g => g.name)
+    });
   }
 
   // If no active groups after filtering, return
-  if (activeGroups.length === 0) return;
+  if (activeGroups.length === 0) {
+    debugLog('Content', 'No active groups after filtering, skipping highlighting');
+    return;
+  }
 
   const mode = matchedDomain.mode;
   const phraseMap: PhraseMap = new Map();
@@ -349,8 +417,20 @@ function clearHighlights() {
 
 // Re-highlight the page (clear old highlights and apply new ones)
 async function reHighlightPage() {
+  debugLog('Content', 'reHighlightPage() called');
+  const highlightsBefore = document.querySelectorAll('[data-makeitpop-highlight]').length;
+  debugLog('Content', `Clearing ${highlightsBefore} existing highlights`);
+
   clearHighlights();
+
   await highlightPage();
+
+  const highlightsAfter = document.querySelectorAll('[data-makeitpop-highlight]').length;
+  debugLog('Content', 'Re-highlight complete', {
+    highlightsBefore,
+    highlightsAfter,
+    delta: highlightsAfter - highlightsBefore
+  });
 }
 
 // Wait for page to fully load and React hydration to complete before highlighting
@@ -370,9 +450,10 @@ function initHighlighting() {
 // Debounced re-highlight to prevent race conditions from rapid storage changes
 let reHighlightTimeout: number | undefined;
 const debouncedReHighlight = () => {
+  debugLog('Content', 'Debounce timer reset/started', { delayMs: 300 });
   clearTimeout(reHighlightTimeout);
   reHighlightTimeout = window.setTimeout(() => {
-    console.log('[Make It Pop] Settings changed, re-highlighting page...');
+    debugLog('Content', 'Debounce timer fired → calling reHighlightPage()');
     reHighlightPage();
   }, 300); // Wait 300ms after last change before re-highlighting
 };
@@ -382,6 +463,21 @@ browserAPI.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local') {
     // Check if groups or domains changed
     if (changes.groups || changes.domains || changes.enabled) {
+      debugLog('Content', 'Storage change detected', {
+        changedKeys: Object.keys(changes),
+        domains: changes.domains ? {
+          oldLength: changes.domains.oldValue?.length,
+          newLength: changes.domains.newValue?.length
+        } : undefined,
+        groups: changes.groups ? {
+          oldLength: changes.groups.oldValue?.length,
+          newLength: changes.groups.newValue?.length
+        } : undefined,
+        enabled: changes.enabled ? {
+          old: changes.enabled.oldValue,
+          new: changes.enabled.newValue
+        } : undefined
+      });
       debouncedReHighlight();
     }
   }

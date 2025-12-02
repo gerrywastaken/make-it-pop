@@ -6,6 +6,34 @@ import type { Group } from '../types';
 import { createElement, createText, showToast } from '../utils/dom';
 import { getGroups, saveGroups } from '../utils/storage';
 
+// Debug logging infrastructure (shared with content.ts and popup.ts)
+let debugEnabled = false;
+
+function getTimestamp(): string {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  return `${hours}:${minutes}:${seconds}.${ms}`;
+}
+
+function debugLog(component: string, message: string, data?: any) {
+  if (!debugEnabled) return;
+  const timestamp = getTimestamp();
+  if (data !== undefined) {
+    console.log(`[${timestamp}] [Make It Pop - ${component}] ${message}`, data);
+  } else {
+    console.log(`[${timestamp}] [Make It Pop - ${component}] ${message}`);
+  }
+}
+
+// Expose debug toggle globally
+(window as any).makeItLog = () => {
+  debugEnabled = !debugEnabled;
+  console.log(`[Make It Pop - Settings] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+};
+
 // Module-level state for groups (will be initialized by parent)
 let groups: Group[] = [];
 let render: () => void = () => {};
@@ -332,6 +360,8 @@ async function autoSaveGroup(card: HTMLElement) {
   const group = groups.find(g => g.id === id);
   if (!group) return;
 
+  debugLog('Settings', 'autoSaveGroup() called', { groupId: id, groupName: group.name });
+
   // Get current values from the card
   const nameInput = card.querySelector('.group-name input') as HTMLInputElement;
   const toggleInput = card.querySelector('.toggle-group-enabled') as HTMLInputElement;
@@ -368,8 +398,16 @@ async function autoSaveGroup(card: HTMLElement) {
     };
   }
 
+  debugLog('Settings', 'Saving groups to storage', {
+    groupId: id,
+    enabled: groups[index].enabled,
+    phrasesCount: phrases.length,
+    totalGroups: groups.length
+  });
+
   // Save to storage
   await saveGroups(groups);
+  debugLog('Settings', 'autoSaveGroup() complete - storage.set() finished');
 }
 
 async function deleteGroup(id: string) {
