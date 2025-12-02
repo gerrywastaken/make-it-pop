@@ -310,10 +310,16 @@ async function handleGroupCheckboxChange() {
 async function saveDomainConfig() {
   if (!currentDomainConfig) return;
 
-  const domainIndex = domains.findIndex(d => d.id === currentDomainConfig!.id);
+  // Read fresh data from storage to avoid overwriting concurrent changes
+  const data = await browserAPI.storage.local.get('domains');
+  const freshDomains = data.domains || [];
+
+  const domainIndex = freshDomains.findIndex(d => d.id === currentDomainConfig!.id);
   if (domainIndex !== -1) {
-    domains[domainIndex] = currentDomainConfig;
-    await browserAPI.storage.local.set({ domains });
+    freshDomains[domainIndex] = currentDomainConfig;
+    await browserAPI.storage.local.set({ domains: freshDomains });
+    // Update local copy to stay in sync
+    domains = freshDomains;
     // No need to reload - content script listens for storage changes
   }
 }
@@ -370,11 +376,15 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
     mode: 'light'
   };
 
-  domains.push(newDomain);
+  // Read fresh data to avoid overwriting concurrent changes
+  const data = await browserAPI.storage.local.get('domains');
+  const freshDomains = data.domains || [];
+  freshDomains.push(newDomain);
   currentDomainConfig = newDomain;
-  await browserAPI.storage.local.set({ domains });
+  await browserAPI.storage.local.set({ domains: freshDomains });
 
-  // Update UI
+  // Update local copy and UI
+  domains = freshDomains;
   updateStats();
   renderDomainConfig();
   updateButtons();
@@ -388,11 +398,15 @@ document.getElementById('removeDomain')!.addEventListener('click', async () => {
   const confirmed = confirm(`Remove ${currentDomain} from configured domains?`);
   if (!confirmed) return;
 
-  domains = domains.filter(d => d.id !== currentDomainConfig!.id);
+  // Read fresh data to avoid overwriting concurrent changes
+  const data = await browserAPI.storage.local.get('domains');
+  const freshDomains = data.domains || [];
+  const filteredDomains = freshDomains.filter(d => d.id !== currentDomainConfig!.id);
   currentDomainConfig = null;
-  await browserAPI.storage.local.set({ domains });
+  await browserAPI.storage.local.set({ domains: filteredDomains });
 
-  // Update UI
+  // Update local copy and UI
+  domains = filteredDomains;
   updateStats();
   renderDomainConfig();
   updateButtons();
