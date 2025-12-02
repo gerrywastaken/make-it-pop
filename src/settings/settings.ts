@@ -558,4 +558,68 @@ document.getElementById('loadSampleData')?.addEventListener('click', async () =>
   render();
 });
 
+// Secret click unlock for debug options (Android-style)
+let clickCount = 0;
+let clickTimeout: number | undefined;
+
+const buildVersionEl = document.getElementById('buildVersion');
+if (buildVersionEl) {
+  buildVersionEl.addEventListener('click', async () => {
+    clickCount++;
+
+    // Reset counter after 2 seconds of inactivity
+    clearTimeout(clickTimeout);
+    clickTimeout = window.setTimeout(() => {
+      clickCount = 0;
+    }, 2000);
+
+    // After 5 clicks, toggle debug options
+    if (clickCount === 5) {
+      clickCount = 0;
+
+      // Check current state and toggle
+      const data = await browserAPI.storage.local.get('debugUnlocked');
+      const isCurrentlyUnlocked = data.debugUnlocked || false;
+      const newState = !isCurrentlyUnlocked;
+
+      await browserAPI.storage.local.set({ debugUnlocked: newState });
+
+      const debugSection = document.getElementById('debugOptions');
+      if (debugSection) {
+        debugSection.style.display = newState ? 'block' : 'none';
+        showToast(newState ? 'Debug options unlocked!' : 'Debug options locked');
+      }
+    }
+  });
+}
+
+// Debug checkbox handler
+document.getElementById('debugModeCheckbox')?.addEventListener('change', async (e) => {
+  const enabled = (e.target as HTMLInputElement).checked;
+  await browserAPI.storage.local.set({ debugMode: enabled });
+  console.log(`[Make It Pop] Debug logging ${enabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+  if (enabled) {
+    console.log('[Make It Pop] Logs will appear in all consoles (page, popup, settings)');
+  }
+});
+
+// Initialize debug checkbox state on page load
+async function initDebugCheckbox() {
+  const data = await browserAPI.storage.local.get(['debugMode', 'debugUnlocked']);
+  const checkbox = document.getElementById('debugModeCheckbox') as HTMLInputElement;
+
+  if (checkbox) {
+    checkbox.checked = data.debugMode || false;
+  }
+
+  // Show debug section if previously unlocked
+  if (data.debugUnlocked) {
+    const debugSection = document.getElementById('debugOptions');
+    if (debugSection) {
+      debugSection.style.display = 'block';
+    }
+  }
+}
+
 init();
+initDebugCheckbox();

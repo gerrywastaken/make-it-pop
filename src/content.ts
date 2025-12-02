@@ -45,14 +45,24 @@ function debugLog(component: string, message: string, data?: any) {
   }
 }
 
-// Expose debug toggle globally
-(window as any).makeItLog = () => {
-  debugEnabled = !debugEnabled;
-  console.log(`[Make It Pop] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+// Initialize debug mode from storage
+async function initDebugMode() {
+  const data = await browserAPI.storage.local.get('debugMode');
+  debugEnabled = data.debugMode || false;
   if (debugEnabled) {
-    console.log('[Make It Pop] Logs will show with format: [HH:MM:SS.mmm] [Component] Message');
+    console.log('[Make It Pop - Content] Debug logging enabled');
   }
-};
+}
+
+// Listen for debug mode changes
+browserAPI.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.debugMode) {
+    debugEnabled = changes.debugMode.newValue || false;
+    console.log(`[Make It Pop - Content] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+  }
+});
+
+initDebugMode();
 
 // Inline storage functions to avoid code splitting issues
 async function getGroups(): Promise<Group[]> {
