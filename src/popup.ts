@@ -283,22 +283,21 @@ async function handleGroupCheckboxChange() {
     const onlyCheckboxes = document.querySelectorAll('.only-checkbox:checked') as NodeListOf<HTMLInputElement>;
     const selectedGroups = Array.from(onlyCheckboxes).map(cb => cb.value);
 
-    if (selectedGroups.length > 0) {
-      currentDomainConfig.groups = selectedGroups;
-      currentDomainConfig.groupMode = 'only';
-    } else {
-      delete currentDomainConfig.groups;
-      delete currentDomainConfig.groupMode;
-    }
+    // Always set groups and groupMode for 'only', even if empty
+    // Empty array means "only these groups: none" = no highlights
+    currentDomainConfig.groups = selectedGroups;
+    currentDomainConfig.groupMode = 'only';
   } else if (groupingMode === 'except') {
     // Get checked groups from except list
     const exceptCheckboxes = document.querySelectorAll('.except-checkbox:checked') as NodeListOf<HTMLInputElement>;
     const selectedGroups = Array.from(exceptCheckboxes).map(cb => cb.value);
 
     if (selectedGroups.length > 0) {
+      // Exclude these specific groups
       currentDomainConfig.groups = selectedGroups;
       currentDomainConfig.groupMode = 'except';
     } else {
+      // Empty except list means "exclude nothing" = use all groups
       delete currentDomainConfig.groups;
       delete currentDomainConfig.groupMode;
     }

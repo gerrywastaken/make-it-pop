@@ -293,14 +293,14 @@ async function highlightPage() {
   let activeGroups = allGroups.filter(g => g.enabled);
 
   // Step 2: Apply domain filters if specified
-  if (matchedDomain.groups && matchedDomain.groups.length > 0) {
-    const groupMode = matchedDomain.groupMode || 'only'; // Default to 'only'
+  if (matchedDomain.groups !== undefined && matchedDomain.groupMode) {
+    const groupMode = matchedDomain.groupMode;
 
     if (groupMode === 'only') {
-      // Include only specified groups
+      // Include only specified groups (empty array = no groups = no highlights)
       activeGroups = activeGroups.filter(g => matchedDomain.groups!.includes(g.name));
     } else if (groupMode === 'except') {
-      // Exclude specified groups
+      // Exclude specified groups (empty array = exclude none = all groups)
       activeGroups = activeGroups.filter(g => !matchedDomain.groups!.includes(g.name));
     }
   }
