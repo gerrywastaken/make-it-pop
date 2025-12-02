@@ -3,6 +3,7 @@
  */
 
 import type { Group } from '../types';
+import { browserAPI } from '../types';
 import { createElement, createText, showToast } from '../utils/dom';
 import { getGroups, saveGroups } from '../utils/storage';
 
@@ -28,11 +29,24 @@ function debugLog(component: string, message: string, data?: any) {
   }
 }
 
-// Expose debug toggle globally
-(window as any).makeItLog = () => {
-  debugEnabled = !debugEnabled;
-  console.log(`[Make It Pop - Settings] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
-};
+// Initialize debug mode from storage
+async function initDebugMode() {
+  const data = await browserAPI.storage.local.get('debugMode');
+  debugEnabled = data.debugMode || false;
+  if (debugEnabled) {
+    console.log('[Make It Pop - Settings] Debug logging enabled');
+  }
+}
+
+// Listen for debug mode changes
+browserAPI.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.debugMode) {
+    debugEnabled = changes.debugMode.newValue || false;
+    console.log(`[Make It Pop - Settings] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+  }
+});
+
+initDebugMode();
 
 // Module-level state for groups (will be initialized by parent)
 let groups: Group[] = [];

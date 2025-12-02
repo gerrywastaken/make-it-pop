@@ -139,9 +139,24 @@
 
       <div class="settings-section">
         <h3>ℹ️ Version Information</h3>
-        <p><strong>Build Version:</strong> <span id="buildVersion">Loading...</span></p>
+        <p><strong>Build Version:</strong> <span id="buildVersion" title="Click me 5 times...">Loading...</span></p>
         <p><strong>Runtime Version:</strong> <span id="runtimeVersion">Loading...</span></p>
         <div id="versionWarning">⚠️ Version mismatch - reload extension</div>
+      </div>
+
+      <div id="debugOptions" class="settings-section" style="display: none;">
+        <h3>🔧 Debug Options</h3>
+        <p class="settings-description">
+          Advanced debugging features for troubleshooting extension behavior.
+        </p>
+        <label style="display: flex; align-items: center; gap: 10px; margin: 15px 0;">
+          <input type="checkbox" id="debugModeCheckbox" style="width: auto;">
+          <span>Enable debug logging in console</span>
+        </label>
+        <p class="settings-description" style="margin-top: 10px; font-size: 14px; color: var(--muted-color);">
+          When enabled, detailed logs will appear in all browser consoles (page content, popup, and settings).
+          This helps diagnose issues with highlighting behavior.
+        </p>
       </div>
     </div>
   </div>

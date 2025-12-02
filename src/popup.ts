@@ -22,12 +22,24 @@ function debugLog(component: string, message: string, data?: any) {
   }
 }
 
-// Check debug mode on load (set by content.ts via window.makeItLog())
-// In popup context, we check periodically or use a simpler approach
-(window as any).makeItLog = () => {
-  debugEnabled = !debugEnabled;
-  console.log(`[Make It Pop - Popup] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
-};
+// Initialize debug mode from storage
+async function initDebugMode() {
+  const data = await browserAPI.storage.local.get('debugMode');
+  debugEnabled = data.debugMode || false;
+  if (debugEnabled) {
+    console.log('[Make It Pop - Popup] Debug logging enabled');
+  }
+}
+
+// Listen for debug mode changes
+browserAPI.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local' && changes.debugMode) {
+    debugEnabled = changes.debugMode.newValue || false;
+    console.log(`[Make It Pop - Popup] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+  }
+});
+
+initDebugMode();
 
 interface Group {
   id: string;
