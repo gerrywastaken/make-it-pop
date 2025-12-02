@@ -272,6 +272,9 @@ export class Highlighter {
   }
 }
 
+// Keep track of current highlighter instance
+let currentHighlighter: Highlighter | null = null;
+
 async function highlightPage() {
   // Check if extension is enabled
   const enabledData = await browserAPI.storage.local.get('enabled');
@@ -317,10 +320,37 @@ async function highlightPage() {
     }
   }
 
-  // Use the new Highlighter class
-  const highlighter = new Highlighter();
-  highlighter.setPhrases(phraseMap, mode);
-  highlighter.start();
+  // Use the new Highlighter class and store it globally
+  currentHighlighter = new Highlighter();
+  currentHighlighter.setPhrases(phraseMap, mode);
+  currentHighlighter.start();
+}
+
+// Remove all existing highlights from the page
+function clearHighlights() {
+  if (currentHighlighter) {
+    currentHighlighter.stop();
+    currentHighlighter = null;
+  }
+
+  // Remove all highlight spans
+  const highlights = document.querySelectorAll('[data-makeitpop-highlight]');
+  highlights.forEach(span => {
+    const parent = span.parentNode;
+    if (parent) {
+      // Replace the span with its text content
+      const textNode = document.createTextNode(span.textContent || '');
+      parent.replaceChild(textNode, span);
+      // Normalize to merge adjacent text nodes
+      parent.normalize();
+    }
+  });
+}
+
+// Re-highlight the page (clear old highlights and apply new ones)
+async function reHighlightPage() {
+  clearHighlights();
+  await highlightPage();
 }
 
 // Wait for page to fully load and React hydration to complete before highlighting
@@ -336,5 +366,16 @@ function initHighlighting() {
     });
   }
 }
+
+// Listen for storage changes to re-highlight when settings are updated
+browserAPI.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName === 'local') {
+    // Check if groups or domains changed
+    if (changes.groups || changes.domains || changes.enabled) {
+      console.log('[Make It Pop] Settings changed, re-highlighting page...');
+      reHighlightPage();
+    }
+  }
+});
 
 initHighlighting();
