@@ -367,13 +367,22 @@ function initHighlighting() {
   }
 }
 
+// Debounced re-highlight to prevent race conditions from rapid storage changes
+let reHighlightTimeout: number | undefined;
+const debouncedReHighlight = () => {
+  clearTimeout(reHighlightTimeout);
+  reHighlightTimeout = window.setTimeout(() => {
+    console.log('[Make It Pop] Settings changed, re-highlighting page...');
+    reHighlightPage();
+  }, 300); // Wait 300ms after last change before re-highlighting
+};
+
 // Listen for storage changes to re-highlight when settings are updated
 browserAPI.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local') {
     // Check if groups or domains changed
     if (changes.groups || changes.domains || changes.enabled) {
-      console.log('[Make It Pop] Settings changed, re-highlighting page...');
-      reHighlightPage();
+      debouncedReHighlight();
     }
   }
 });
