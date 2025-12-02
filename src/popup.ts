@@ -1,5 +1,34 @@
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
+// Debug logging infrastructure (shared with content.ts)
+let debugEnabled = false;
+
+function getTimestamp(): string {
+  const now = new Date();
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const ms = String(now.getMilliseconds()).padStart(3, '0');
+  return `${hours}:${minutes}:${seconds}.${ms}`;
+}
+
+function debugLog(component: string, message: string, data?: any) {
+  if (!debugEnabled) return;
+  const timestamp = getTimestamp();
+  if (data !== undefined) {
+    console.log(`[${timestamp}] [Make It Pop - ${component}] ${message}`, data);
+  } else {
+    console.log(`[${timestamp}] [Make It Pop - ${component}] ${message}`);
+  }
+}
+
+// Check debug mode on load (set by content.ts via window.makeItLog())
+// In popup context, we check periodically or use a simpler approach
+(window as any).makeItLog = () => {
+  debugEnabled = !debugEnabled;
+  console.log(`[Make It Pop - Popup] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+};
+
 interface Group {
   id: string;
   name: string;
@@ -274,10 +303,13 @@ async function handleGroupCheckboxChange() {
   const selectedRadio = document.querySelector('input[name="grouping"]:checked') as HTMLInputElement;
   const groupingMode = selectedRadio?.value || 'all';
 
+  debugLog('Popup', 'handleGroupCheckboxChange() called', { groupingMode });
+
   if (groupingMode === 'all') {
     // Clear groups config - use all enabled groups
     delete currentDomainConfig.groups;
     delete currentDomainConfig.groupMode;
+    debugLog('Popup', 'Grouping mode set to ALL (use all enabled groups)');
   } else if (groupingMode === 'only') {
     // Get checked groups from only list
     const onlyCheckboxes = document.querySelectorAll('.only-checkbox:checked') as NodeListOf<HTMLInputElement>;
@@ -287,6 +319,7 @@ async function handleGroupCheckboxChange() {
     // Empty array means "only these groups: none" = no highlights
     currentDomainConfig.groups = selectedGroups;
     currentDomainConfig.groupMode = 'only';
+    debugLog('Popup', 'Grouping mode set to ONLY', { selectedGroups });
   } else if (groupingMode === 'except') {
     // Get checked groups from except list
     const exceptCheckboxes = document.querySelectorAll('.except-checkbox:checked') as NodeListOf<HTMLInputElement>;
@@ -296,10 +329,12 @@ async function handleGroupCheckboxChange() {
       // Exclude these specific groups
       currentDomainConfig.groups = selectedGroups;
       currentDomainConfig.groupMode = 'except';
+      debugLog('Popup', 'Grouping mode set to EXCEPT', { selectedGroups });
     } else {
       // Empty except list means "exclude nothing" = use all groups
       delete currentDomainConfig.groups;
       delete currentDomainConfig.groupMode;
+      debugLog('Popup', 'Grouping mode set to EXCEPT with empty list (using all groups)');
     }
   }
 
@@ -310,14 +345,25 @@ async function handleGroupCheckboxChange() {
 async function saveDomainConfig() {
   if (!currentDomainConfig) return;
 
+  debugLog('Popup', 'saveDomainConfig() called', {
+    domainId: currentDomainConfig.id,
+    domain: currentDomainConfig.domain,
+    groupMode: currentDomainConfig.groupMode,
+    groups: currentDomainConfig.groups,
+    mode: currentDomainConfig.mode
+  });
+
   // Read fresh data from storage to avoid overwriting concurrent changes
   const data = await browserAPI.storage.local.get('domains');
   const freshDomains = data.domains || [];
+  debugLog('Popup', 'Read fresh domains from storage', { count: freshDomains.length });
 
   const domainIndex = freshDomains.findIndex(d => d.id === currentDomainConfig!.id);
   if (domainIndex !== -1) {
     freshDomains[domainIndex] = currentDomainConfig;
+    debugLog('Popup', 'Saving updated domain config to storage', { index: domainIndex });
     await browserAPI.storage.local.set({ domains: freshDomains });
+    debugLog('Popup', 'saveDomainConfig() complete - storage.set() finished');
     // Update local copy to stay in sync
     domains = freshDomains;
     // No need to reload - content script listens for storage changes
