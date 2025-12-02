@@ -564,8 +564,21 @@ let clickTimeout: number | undefined;
 
 const buildVersionEl = document.getElementById('buildVersion');
 if (buildVersionEl) {
+  // Prevent text selection during rapid clicking without changing cursor
+  const preventSelection = (e: Event) => {
+    if (clickCount >= 2) {
+      e.preventDefault();
+    }
+  };
+  buildVersionEl.addEventListener('selectstart', preventSelection);
+
   buildVersionEl.addEventListener('click', async () => {
     clickCount++;
+
+    // Clear any existing selection from previous clicks
+    if (clickCount >= 2) {
+      window.getSelection()?.removeAllRanges();
+    }
 
     // Reset counter after 2 seconds of inactivity
     clearTimeout(clickTimeout);
