@@ -222,38 +222,37 @@ interface StorageData {
 
 ### Phase 1: Foundation
 - [x] Project setup (Vite + TypeScript)
-- [ ] Data schema and storage helpers
-- [ ] Basic settings page (no styling, just functional CRUD)
-- [ ] Domain pattern matcher
+- [x] Data schema and storage helpers
+- [x] Basic settings page (no styling, just functional CRUD)
+- [x] Domain pattern matcher
 
 ### Phase 2: Highlighting
-- [ ] Phrase matcher (longest match, case-insensitive)
-- [ ] Content script: basic highlighting on page load
-- [ ] Test with simple group/domain config
+- [x] Phrase matcher (longest match, case-insensitive)
+- [x] Content script: basic highlighting on page load
+- [x] Test with simple group/domain config
 
 ### Phase 3: Dynamic Content
-- [ ] MutationObserver with 3-second debounce
-- [ ] Avoid re-highlighting already highlighted text
-- [ ] Performance testing on heavy DOM sites
+- [x] MutationObserver with 3-second debounce
+- [x] Avoid re-highlighting already highlighted text
+- [x] Performance testing on heavy DOM sites
 
 ### Phase 4: Polish
-- [ ] Settings page styling (clean, usable UI)
-- [ ] Export/import functionality
-- [ ] Error handling (invalid JSON import, etc.)
-- [ ] Icons and branding
+- [x] Settings page styling (clean, usable UI)
+- [x] Export/import functionality
+- [x] Error handling (invalid JSON import, etc.)
+- [x] Icons and branding
 
 ### Phase 5: Cross-browser Testing
-- [ ] Test in Chrome
-- [ ] Test in Firefox
-- [ ] Fix any browser-specific issues
+- [x] Test in Chrome
+- [x] Test in Firefox
+- [x] Fix any browser-specific issues
 
 ## Future Enhancements (Post-MVP)
-- Popup UI for quick toggles
-- Auto-detect light/dark mode
-- Sync storage option
-- Regex phrase support
-- Per-phrase enable/disable
-- Statistics (phrases found, pages highlighted)
+- [x] Popup UI for quick toggles
+- [ ] Auto-detect light/dark mode
+- [ ] Sync storage option
+- [ ] Regex phrase support
+- [ ] Statistics (phrases found, pages highlighted)
 
 ## Development Notes
 
