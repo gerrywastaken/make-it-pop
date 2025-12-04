@@ -1,4 +1,5 @@
-// Phrase matching logic - extracted for testability
+// Phrase matching using Aho-Corasick algorithm for O(n) multi-pattern matching
+// This replaces the naive O(n × m) approach with a single-pass algorithm
 
 export interface PhraseColors {
   bgColor: string;
@@ -10,18 +11,18 @@ export type PhraseMap = Map<string, PhraseColors>;
 export interface Match {
   start: number;
   end: number;
+  phrase: string;  // Original phrase (for case preservation)
   bgColor: string;
   textColor: string;
 }
 
 // Check if a character is a word character (alphanumeric or underscore)
-export function isWordChar(char: string): boolean {
+function isWordChar(char: string): boolean {
   return /\w/.test(char);
 }
 
 // Check if match is at a word boundary
-// Only enforces boundaries if the phrase itself starts/ends with word characters
-export function isWordBoundary(text: string, start: number, end: number, phrase: string): boolean {
+function isWordBoundary(text: string, start: number, end: number, phrase: string): boolean {
   const charBefore = start > 0 ? text[start - 1] : '';
   const charAfter = end < text.length ? text[end] : '';
 
@@ -36,89 +37,189 @@ export function isWordBoundary(text: string, start: number, end: number, phrase:
   return beforeOk && afterOk;
 }
 
-// Check if a phrase is all uppercase (all letters in the phrase are uppercase)
-// Phrases with no letters default to case-insensitive matching
-export function isAllUppercase(phrase: string): boolean {
+// Check if a phrase is all uppercase
+function isAllUppercase(phrase: string): boolean {
   const letters = phrase.match(/[a-zA-Z]/g);
-  if (!letters || letters.length === 0) return false; // No letters, default to case-insensitive
+  if (!letters || letters.length === 0) return false;
   return letters.every(char => char === char.toUpperCase());
 }
 
-// Cache for sorted phrases to avoid recreating array on every call
-interface CachedPhraseData {
-  phrases: string[];  // Pre-sorted by length (descending)
-  lowercasePhrases: Map<string, string>;  // Cache of phrase -> lowercase
-  uppercasePhrases: Set<string>;  // Set of all-uppercase phrases
+// Aho-Corasick Trie Node
+interface TrieNode {
+  children: Map<string, TrieNode>;
+  fail: TrieNode | null;  // Failure link
+  output: PhraseOutput[]; // Patterns that end at this node
+  depth: number;
 }
 
-let phraseCache: CachedPhraseData | null = null;
-let lastPhraseMap: PhraseMap | null = null;
-
-export function buildPhraseCache(phraseMap: PhraseMap): CachedPhraseData {
-  const phrases = Array.from(phraseMap.keys()).sort((a, b) => b.length - a.length);
-  const lowercasePhrases = new Map<string, string>();
-  const uppercasePhrases = new Set<string>();
-
-  for (const phrase of phrases) {
-    if (isAllUppercase(phrase)) {
-      uppercasePhrases.add(phrase);
-    } else {
-      lowercasePhrases.set(phrase, phrase.toLowerCase());
-    }
-  }
-
-  return { phrases, lowercasePhrases, uppercasePhrases };
+interface PhraseOutput {
+  phrase: string;         // Original phrase
+  lowerPhrase: string;    // Lowercase version for matching
+  caseSensitive: boolean; // True for all-uppercase phrases
+  colors: PhraseColors;
 }
 
-export function findMatches(text: string, phraseMap: PhraseMap): Match[] {
-  // Update cache if phraseMap changed
-  if (phraseMap !== lastPhraseMap) {
-    phraseCache = buildPhraseCache(phraseMap);
-    lastPhraseMap = phraseMap;
+function createNode(depth: number = 0): TrieNode {
+  return {
+    children: new Map(),
+    fail: null,
+    output: [],
+    depth
+  };
+}
+
+// Build Aho-Corasick automaton from phrase map
+class AhoCorasick {
+  private root: TrieNode;
+  private built: boolean = false;
+
+  constructor() {
+    this.root = createNode();
   }
 
-  if (!phraseCache) return [];
+  // Add a phrase to the trie
+  addPhrase(phrase: string, colors: PhraseColors): void {
+    const lowerPhrase = phrase.toLowerCase();
+    const caseSensitive = isAllUppercase(phrase);
 
-  const { phrases, lowercasePhrases, uppercasePhrases } = phraseCache;
-  const matches: Match[] = [];
-  const lowerText = text.toLowerCase();
-
-  let position = 0;
-  while (position < text.length) {
-    let matched = false;
-    for (const phrase of phrases) {
-      const isUppercasePhrase = uppercasePhrases.has(phrase);
-      let matchFound = false;
-
-      if (isUppercasePhrase) {
-        // Case-sensitive matching for all-uppercase phrases
-        const substring = text.substring(position, position + phrase.length);
-        matchFound = substring === phrase;
-      } else {
-        // Case-insensitive matching for mixed-case or lowercase phrases
-        const lowerPhrase = lowercasePhrases.get(phrase)!;
-        matchFound = lowerText.startsWith(lowerPhrase, position);
+    let node = this.root;
+    for (const char of lowerPhrase) {
+      if (!node.children.has(char)) {
+        node.children.set(char, createNode(node.depth + 1));
       }
+      node = node.children.get(char)!;
+    }
 
-      if (matchFound) {
-        const end = position + phrase.length;
-        // Check word boundaries
-        if (isWordBoundary(text, position, end, phrase)) {
-          const colors = phraseMap.get(phrase)!;
-          matches.push({
-            start: position,
-            end: end,
-            bgColor: colors.bgColor,
-            textColor: colors.textColor,
-          });
-          position += phrase.length;
-          matched = true;
-          break;
+    node.output.push({ phrase, lowerPhrase, caseSensitive, colors });
+    this.built = false;
+  }
+
+  // Build failure links using BFS
+  build(): void {
+    if (this.built) return;
+
+    const queue: TrieNode[] = [];
+
+    // Initialize failure links for depth-1 nodes to root
+    for (const child of this.root.children.values()) {
+      child.fail = this.root;
+      queue.push(child);
+    }
+
+    // BFS to build failure links
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+
+      for (const [char, child] of current.children) {
+        queue.push(child);
+
+        // Find failure link
+        let fail = current.fail;
+        while (fail !== null && !fail.children.has(char)) {
+          fail = fail.fail;
+        }
+        child.fail = fail ? fail.children.get(char)! : this.root;
+
+        // Merge output from failure link (for overlapping patterns)
+        if (child.fail !== this.root) {
+          child.output = [...child.output, ...child.fail.output];
         }
       }
     }
-    if (!matched) position++;
+
+    this.built = true;
   }
 
-  return matches;
+  // Search for all matches in text - O(n) where n is text length
+  search(text: string): Match[] {
+    this.build();
+
+    const lowerText = text.toLowerCase();
+    const matches: Match[] = [];
+    let node = this.root;
+
+    for (let i = 0; i < lowerText.length; i++) {
+      const char = lowerText[i];
+
+      // Follow failure links until we find a match or reach root
+      while (node !== this.root && !node.children.has(char)) {
+        node = node.fail!;
+      }
+
+      if (node.children.has(char)) {
+        node = node.children.get(char)!;
+      }
+
+      // Check for matches at this position
+      for (const output of node.output) {
+        const start = i - output.lowerPhrase.length + 1;
+        const end = i + 1;
+
+        // Check word boundaries
+        if (!isWordBoundary(text, start, end, output.phrase)) {
+          continue;
+        }
+
+        // For case-sensitive phrases, verify exact match
+        if (output.caseSensitive) {
+          const actualText = text.substring(start, end);
+          if (actualText !== output.phrase) {
+            continue;
+          }
+        }
+
+        matches.push({
+          start,
+          end,
+          phrase: output.phrase,
+          bgColor: output.colors.bgColor,
+          textColor: output.colors.textColor
+        });
+      }
+    }
+
+    // Sort by position, then by length (longest first for overlaps)
+    matches.sort((a, b) => {
+      if (a.start !== b.start) return a.start - b.start;
+      return b.end - a.end; // Longer matches first
+    });
+
+    // Remove overlapping matches (keep longest/first)
+    const filtered: Match[] = [];
+    let lastEnd = 0;
+    for (const match of matches) {
+      if (match.start >= lastEnd) {
+        filtered.push(match);
+        lastEnd = match.end;
+      }
+    }
+
+    return filtered;
+  }
+}
+
+// Cache the automaton to avoid rebuilding
+let cachedAutomaton: AhoCorasick | null = null;
+let cachedPhraseMap: PhraseMap | null = null;
+
+export function findMatches(text: string, phraseMap: PhraseMap): Match[] {
+  // Rebuild automaton if phrase map changed
+  if (phraseMap !== cachedPhraseMap) {
+    cachedAutomaton = new AhoCorasick();
+    for (const [phrase, colors] of phraseMap) {
+      cachedAutomaton.addPhrase(phrase, colors);
+    }
+    cachedAutomaton.build();
+    cachedPhraseMap = phraseMap;
+  }
+
+  if (!cachedAutomaton) return [];
+
+  return cachedAutomaton.search(text);
+}
+
+// Clear the cache (useful when settings change)
+export function clearMatcherCache(): void {
+  cachedAutomaton = null;
+  cachedPhraseMap = null;
 }
