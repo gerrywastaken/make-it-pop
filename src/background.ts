@@ -147,15 +147,27 @@ browserAPI.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 });
 
-// Listen for when domains are added/changed in storage
+// Listen for when NEW domains are added to storage
+// (Don't re-inject when existing domain configs are modified - content scripts handle that)
 browserAPI.storage.onChanged.addListener(async (changes, areaName) => {
   if (areaName !== 'local') {
     return;
   }
 
-  // If domains were updated, we might need to inject on currently open tabs
+  // Only inject if domains were ADDED (not just modified)
   if (changes.domains) {
-    console.log('[MakeItPop Background] Domains changed, checking open tabs...');
+    const oldDomains = changes.domains.oldValue || [];
+    const newDomains = changes.domains.newValue || [];
+
+    // Check if any new domains were added
+    const domainsAdded = newDomains.length > oldDomains.length;
+
+    if (!domainsAdded) {
+      console.log('[MakeItPop Background] Domains modified (not added) - content scripts will handle re-highlighting');
+      return;
+    }
+
+    console.log('[MakeItPop Background] New domains added, checking open tabs...');
     // Get all tabs and check if we should inject
     const tabs = await browserAPI.tabs.query({});
 
