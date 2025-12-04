@@ -308,14 +308,20 @@ function handleGroupingChange() {
   handleGroupCheckboxChange();
 }
 
+// Track how many times we're called to debug multiple storage writes
+let handleGroupCheckboxChangeCallCount = 0;
+
 // Handle group checkbox change
 async function handleGroupCheckboxChange() {
   if (!currentDomainConfig) return;
 
+  handleGroupCheckboxChangeCallCount++;
+  const callNumber = handleGroupCheckboxChangeCallCount;
+
   const selectedRadio = document.querySelector('input[name="grouping"]:checked') as HTMLInputElement;
   const groupingMode = selectedRadio?.value || 'all';
 
-  debugLog('Popup', 'handleGroupCheckboxChange() called', { groupingMode });
+  debugLog('Popup', `handleGroupCheckboxChange() called #${callNumber}`, { groupingMode });
 
   if (groupingMode === 'all') {
     // Clear groups config - use all enabled groups
@@ -353,11 +359,17 @@ async function handleGroupCheckboxChange() {
   await saveDomainConfig();
 }
 
+// Track save calls
+let saveDomainConfigCallCount = 0;
+
 // Save domain configuration
 async function saveDomainConfig() {
   if (!currentDomainConfig) return;
 
-  debugLog('Popup', 'saveDomainConfig() called', {
+  saveDomainConfigCallCount++;
+  const callNumber = saveDomainConfigCallCount;
+
+  debugLog('Popup', `saveDomainConfig() called #${callNumber}`, {
     domainId: currentDomainConfig.id,
     domain: currentDomainConfig.domain,
     groupMode: currentDomainConfig.groupMode,
@@ -373,9 +385,12 @@ async function saveDomainConfig() {
   const domainIndex = freshDomains.findIndex(d => d.id === currentDomainConfig!.id);
   if (domainIndex !== -1) {
     freshDomains[domainIndex] = currentDomainConfig;
-    debugLog('Popup', 'Saving updated domain config to storage', { index: domainIndex });
+    debugLog('Popup', `💾 Writing to storage (call #${callNumber})`, {
+      index: domainIndex,
+      stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n')
+    });
     await browserAPI.storage.local.set({ domains: freshDomains });
-    debugLog('Popup', 'saveDomainConfig() complete - storage.set() finished');
+    debugLog('Popup', `✅ storage.set() complete (call #${callNumber})`);
     // Update local copy to stay in sync
     domains = freshDomains;
     // No need to reload - content script listens for storage changes
