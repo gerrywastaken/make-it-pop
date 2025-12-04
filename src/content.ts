@@ -1,6 +1,7 @@
-import { findMatches, type Match, type PhraseMap } from './matcher.js';
+// Content script for Make It Pop - highlights phrases on web pages
+import { findMatches, clearMatcherCache, type Match, type PhraseMap } from './matcher.js';
 
-// Inline types to avoid imports
+// Types
 interface Group {
   id: string;
   name: string;
@@ -14,57 +15,56 @@ interface Group {
 
 interface Domain {
   id: string;
-  domain: string;  // Just the domain without wildcards (e.g., "linkedin.com")
-  matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';  // How to match the domain
+  domain: string;
+  matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';
   mode: 'light' | 'dark';
-  groups?: string[];  // List of group names (optional, omit for "all enabled groups")
-  groupMode?: 'only' | 'except';  // Defaults to 'only' if groups specified
+  groups?: string[];
+  groupMode?: 'only' | 'except';
 }
 
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
-// Debug logging infrastructure
+// =============================================================================
+// Debug Logging
+// =============================================================================
+
 let debugEnabled = false;
 
 function getTimestamp(): string {
   const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
-  const ms = String(now.getMilliseconds()).padStart(3, '0');
-  return `${hours}:${minutes}:${seconds}.${ms}`;
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(now.getMilliseconds()).padStart(3, '0')}`;
 }
 
-function debugLog(component: string, message: string, data?: any) {
+function debugLog(message: string, data?: any) {
   if (!debugEnabled) return;
-  const timestamp = getTimestamp();
   if (data !== undefined) {
-    console.log(`[${timestamp}] [Make It Pop - ${component}] ${message}`, data);
+    console.log(`[${getTimestamp()}] [Make It Pop] ${message}`, data);
   } else {
-    console.log(`[${timestamp}] [Make It Pop - ${component}] ${message}`);
+    console.log(`[${getTimestamp()}] [Make It Pop] ${message}`);
   }
 }
 
-// Initialize debug mode from storage
 async function initDebugMode() {
   const data = await browserAPI.storage.local.get('debugMode');
   debugEnabled = data.debugMode || false;
   if (debugEnabled) {
-    console.log('[Make It Pop - Content] Debug logging enabled');
+    console.log('[Make It Pop] Debug logging enabled');
   }
 }
 
-// Listen for debug mode changes
 browserAPI.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === 'local' && changes.debugMode) {
     debugEnabled = changes.debugMode.newValue || false;
-    console.log(`[Make It Pop - Content] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
+    console.log(`[Make It Pop] Debug logging ${debugEnabled ? 'ENABLED' : 'DISABLED'}`);
   }
 });
 
 initDebugMode();
 
-// Inline storage functions to avoid code splitting issues
+// =============================================================================
+// Storage Helpers
+// =============================================================================
+
 async function getGroups(): Promise<Group[]> {
   const data = await browserAPI.storage.local.get('groups');
   return data.groups || [];
@@ -77,7 +77,6 @@ async function getDomains(): Promise<Domain[]> {
 
 function matchesDomain(domainConfig: Domain, hostname: string): boolean {
   const { domain, matchMode } = domainConfig;
-
   switch (matchMode) {
     case 'domain-and-www':
       return hostname === domain || hostname === `www.${domain}`;
@@ -90,302 +89,175 @@ function matchesDomain(domainConfig: Domain, hostname: string): boolean {
   }
 }
 
-// Process ONE match at a time using atomic operations to prevent race conditions
-// Recursively process the remaining text after each highlight
-function highlightTextNode(node: Text, phraseMap: PhraseMap, loopNumber: number) {
-  const text = node.textContent || '';
-  if (text.trim() === '') return;
+// =============================================================================
+// DOM Helpers
+// =============================================================================
 
-  const matches = findMatches(text, phraseMap);
-  if (matches.length === 0) return;
-
-  const parent = node.parentNode;
-  if (!parent) return;
-
-  // Only process the FIRST match - atomic operations prevent race conditions
-  const match = matches[0];
-
-  try {
-    // Split text node at match position (atomic operation)
-    const after = node.splitText(match.start);
-
-    // Remove matched portion from the "after" node (atomic operation)
-    after.nodeValue = after.nodeValue!.substring(match.end - match.start);
-
-    // Create highlight span
-    const span = document.createElement('span');
-    span.style.backgroundColor = match.bgColor;
-    span.style.color = match.textColor;
-    span.style.padding = '2px 4px';
-    span.style.boxShadow = '1px 1px rgba(0, 0, 0, 0.2)';
-    span.style.borderRadius = '3px';
-    span.style.fontStyle = 'inherit';
-    span.setAttribute('data-makeitpop-highlight', 'true');
-    span.setAttribute('data-makeitpop-loop', loopNumber.toString());
-    span.textContent = text.slice(match.start, match.end);
-
-    // Insert highlight between the two text nodes (atomic operation)
-    parent.insertBefore(span, after);
-
-    // Recursively process the remaining text node for more matches
-    highlightTextNode(after, phraseMap, loopNumber);
-  } catch (e) {
-    // Node was removed by framework during operation - bail out gracefully
-    return;
-  }
-}
-
-// Elements we should never highlight inside
 const SKIP_TAGS = new Set([
   'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT',
   'SELECT', 'OPTION', 'HEAD', 'IFRAME', 'OBJECT', 'EMBED'
 ]);
 
 function shouldSkipElement(element: Element): boolean {
-  // Skip if it's one of the forbidden tags
-  if (SKIP_TAGS.has(element.tagName)) {
-    return true;
-  }
-  // Skip contenteditable elements (rich text editors)
-  if ((element as HTMLElement).isContentEditable) {
-    return true;
-  }
-
-  // No React detection needed - atomic operations work fine with React
+  if (SKIP_TAGS.has(element.tagName)) return true;
+  if ((element as HTMLElement).isContentEditable) return true;
   return false;
 }
 
-function walkTextNodes(node: Node, phraseMap: PhraseMap, loopNumber: number) {
-  if (node.nodeType === Node.TEXT_NODE) {
-    const parent = node.parentNode;
-    if (!parent) return;
+// =============================================================================
+// Highlighting - Apply all matches at once (no recursion!)
+// =============================================================================
 
-    // Skip if parent is a forbidden element
-    if (parent.nodeType === Node.ELEMENT_NODE && shouldSkipElement(parent as Element)) {
-      return;
-    }
+function highlightTextNode(node: Text, phraseMap: PhraseMap): number {
+  const text = node.textContent || '';
+  if (text.trim() === '') return 0;
 
-    // Skip if parent is already a highlight span from THIS loop
-    // (Highlights from previous loops will be encountered as elements below)
-    if ((parent as Element).hasAttribute?.('data-makeitpop-highlight')) {
-      const parentLoop = (parent as Element).getAttribute('data-makeitpop-loop');
-      if (parentLoop === loopNumber.toString()) {
-        return; // Already processed in this loop
-      }
-    }
+  const matches = findMatches(text, phraseMap);
+  if (matches.length === 0) return 0;
 
-    highlightTextNode(node as Text, phraseMap, loopNumber);
-  } else if (node.nodeType === Node.ELEMENT_NODE) {
-    const element = node as Element;
+  const parent = node.parentNode;
+  if (!parent) return 0;
 
-    // Skip our own highlight spans (but we'll traverse children to re-count)
-    if (element.hasAttribute('data-makeitpop-highlight')) {
-      return; // Don't traverse into highlights
-    }
+  // Apply matches in REVERSE order to avoid position shifting
+  // This is much more efficient than recursive calls
+  let highlightCount = 0;
 
-    // Skip forbidden elements entirely
-    if (shouldSkipElement(element)) {
-      return;
-    }
-
-    // Use Array.from to avoid live NodeList issues during DOM manipulation
-    const children = Array.from(node.childNodes);
-    for (const child of children) {
-      walkTextNodes(child, phraseMap, loopNumber);
-    }
-  }
-}
-
-// Debounce utility - simpler approach for better reliability
-function debounce(func: Function, wait: number): Function {
-  let timeout: number | undefined;
-  return function(...args: any[]) {
-    clearTimeout(timeout);
-    timeout = window.setTimeout(() => func(...args), wait);
-  };
-}
-
-// Highlighter class - extracted for testability
-export class Highlighter {
-  private phraseMap: PhraseMap | null = null;
-  private mode: 'light' | 'dark' = 'light';
-  private isHighlighting = false;
-  private currentLoopNumber = 0;
-  private mutationsPending = false;
-  private observer: MutationObserver | null = null;
-  private debouncedHighlight: Function;
-  private rootElement: HTMLElement;
-
-  constructor(rootElement: HTMLElement = document.body, debounceMs: number = 1500) {
-    this.rootElement = rootElement;
-    this.debouncedHighlight = debounce(() => this.highlightAll(), debounceMs);
-  }
-
-  setPhrases(phraseMap: PhraseMap, mode: 'light' | 'dark') {
-    this.phraseMap = phraseMap;
-    this.mode = mode;
-  }
-
-  private highlightAll() {
-    if (!this.phraseMap || this.isHighlighting || !this.mutationsPending) return;
-
-    this.isHighlighting = true;
-    this.mutationsPending = false;
-    this.currentLoopNumber++;
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const match = matches[i];
 
     try {
-      walkTextNodes(this.rootElement, this.phraseMap, this.currentLoopNumber);
-    } finally {
-      this.isHighlighting = false;
+      // Split at end position first
+      const afterMatch = node.splitText(match.end);
+
+      // Split at start position (node now contains text before match)
+      const matchNode = node.splitText(match.start);
+
+      // matchNode now contains exactly the matched text
+      // afterMatch contains text after the match
+
+      // Create highlight span
+      const span = document.createElement('span');
+      span.style.backgroundColor = match.bgColor;
+      span.style.color = match.textColor;
+      span.style.padding = '2px 4px';
+      span.style.boxShadow = '1px 1px rgba(0, 0, 0, 0.2)';
+      span.style.borderRadius = '3px';
+      span.style.fontStyle = 'inherit';
+      span.setAttribute('data-makeitpop', 'true');
+      span.textContent = matchNode.textContent;
+
+      // Replace matchNode with the span
+      parent.replaceChild(span, matchNode);
+
+      highlightCount++;
+    } catch (e) {
+      // Node was modified during operation - skip this match
+      continue;
     }
   }
 
-  start() {
-    if (!this.phraseMap) return;
-
-    // Initial highlight
-    this.currentLoopNumber = 0;
-    walkTextNodes(this.rootElement, this.phraseMap, this.currentLoopNumber);
-
-    // Set up MutationObserver
-    this.observer = new MutationObserver((mutations) => {
-      let hasRelevantMutation = false;
-
-      for (const mutation of mutations) {
-        if (mutation.target.nodeType === Node.ELEMENT_NODE) {
-          const element = mutation.target as Element;
-          if (element.hasAttribute?.('data-makeitpop-highlight')) {
-            continue;
-          }
-        }
-
-        if (mutation.type === 'characterData') {
-          const parent = mutation.target.parentNode;
-          if (parent && parent.nodeType === Node.ELEMENT_NODE) {
-            const parentElement = parent as Element;
-            if (parentElement.hasAttribute?.('data-makeitpop-highlight')) {
-              continue;
-            }
-          }
-          hasRelevantMutation = true;
-          break;
-        } else if (mutation.type === 'childList') {
-          if (mutation.addedNodes.length > 0) {
-            for (const node of mutation.addedNodes) {
-              if (node.nodeType === Node.ELEMENT_NODE) {
-                const element = node as Element;
-                if (element.hasAttribute?.('data-makeitpop-highlight')) {
-                  continue;
-                }
-              }
-              hasRelevantMutation = true;
-              break;
-            }
-          }
-          if (hasRelevantMutation) break;
-
-          if (mutation.removedNodes.length > 0) {
-            hasRelevantMutation = true;
-            break;
-          }
-        }
-      }
-
-      if (hasRelevantMutation) {
-        this.mutationsPending = true;
-        this.debouncedHighlight();
-      }
-    });
-
-    this.observer.observe(this.rootElement, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      characterDataOldValue: false,
-    });
-  }
-
-  stop() {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-    }
-  }
+  return highlightCount;
 }
 
-// Keep track of current highlighter instance
-let currentHighlighter: Highlighter | null = null;
+function collectTextNodes(root: Node): Text[] {
+  const textNodes: Text[] = [];
 
-async function highlightPage() {
-  debugLog('Content', 'highlightPage() called');
+  function walk(node: Node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const parent = node.parentNode;
+      if (parent && parent.nodeType === Node.ELEMENT_NODE) {
+        const element = parent as Element;
+        // Skip if already highlighted or in skip element
+        if (!element.hasAttribute('data-makeitpop') && !shouldSkipElement(element)) {
+          textNodes.push(node as Text);
+        }
+      }
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as Element;
+      // Skip highlighted spans and skip elements
+      if (!element.hasAttribute('data-makeitpop') && !shouldSkipElement(element)) {
+        for (const child of Array.from(node.childNodes)) {
+          walk(child);
+        }
+      }
+    }
+  }
 
+  walk(root);
+  return textNodes;
+}
+
+function highlightNodes(nodes: Text[], phraseMap: PhraseMap): number {
+  let totalHighlights = 0;
+  for (const node of nodes) {
+    // Check if node is still in DOM and parent hasn't been highlighted
+    if (!node.parentNode) continue;
+    const parent = node.parentNode as Element;
+    if (parent.hasAttribute?.('data-makeitpop')) continue;
+
+    totalHighlights += highlightTextNode(node, phraseMap);
+  }
+  return totalHighlights;
+}
+
+function clearAllHighlights(): number {
+  const highlights = document.querySelectorAll('[data-makeitpop]');
+  const count = highlights.length;
+
+  highlights.forEach(span => {
+    const parent = span.parentNode;
+    if (parent) {
+      const textNode = document.createTextNode(span.textContent || '');
+      parent.replaceChild(textNode, span);
+      parent.normalize();
+    }
+  });
+
+  return count;
+}
+
+// =============================================================================
+// Main Highlighting Logic
+// =============================================================================
+
+let currentPhraseMap: PhraseMap | null = null;
+let mutationObserver: MutationObserver | null = null;
+
+async function getActiveConfig(): Promise<{ phraseMap: PhraseMap; mode: 'light' | 'dark' } | null> {
   // Check if extension is enabled
   const enabledData = await browserAPI.storage.local.get('enabled');
-  const enabled = enabledData.enabled !== false; // Default to true if not set
-  debugLog('Content', 'Extension enabled check', { enabled });
-  if (!enabled) {
-    debugLog('Content', 'Extension disabled, skipping highlighting');
-    return;
+  if (enabledData.enabled === false) {
+    debugLog('Extension disabled');
+    return null;
   }
 
   const hostname = window.location.hostname;
   const domains = await getDomains();
-  debugLog('Content', 'Fetched domains', { hostname, domainsCount: domains.length });
-
   const matchedDomain = domains.find(d => matchesDomain(d, hostname));
+
   if (!matchedDomain) {
-    debugLog('Content', 'No matching domain configuration found', { hostname });
-    return;
+    debugLog('No domain config for', hostname);
+    return null;
   }
-  debugLog('Content', 'Matched domain', {
-    domain: matchedDomain.domain,
-    mode: matchedDomain.mode,
-    groupMode: matchedDomain.groupMode,
-    configuredGroups: matchedDomain.groups
-  });
 
   const allGroups = await getGroups();
-  debugLog('Content', 'Fetched groups', {
-    totalGroups: allGroups.length,
-    enabledGroups: allGroups.filter(g => g.enabled).length,
-    groupNames: allGroups.map(g => `${g.name}${g.enabled ? ' ✓' : ' ✗'}`)
-  });
-
-  // Step 1: Start with all enabled groups
   let activeGroups = allGroups.filter(g => g.enabled);
 
-  // Step 2: Apply domain filters if specified
+  // Apply domain filters
   if (matchedDomain.groups !== undefined && matchedDomain.groupMode) {
-    const groupMode = matchedDomain.groupMode;
-    const beforeFiltering = activeGroups.length;
-
-    if (groupMode === 'only') {
-      // Include only specified groups (empty array = no groups = no highlights)
+    if (matchedDomain.groupMode === 'only') {
       activeGroups = activeGroups.filter(g => matchedDomain.groups!.includes(g.name));
-    } else if (groupMode === 'except') {
-      // Exclude specified groups (empty array = exclude none = all groups)
+    } else if (matchedDomain.groupMode === 'except') {
       activeGroups = activeGroups.filter(g => !matchedDomain.groups!.includes(g.name));
     }
-
-    debugLog('Content', 'Group filtering applied', {
-      mode: groupMode,
-      configuredGroups: matchedDomain.groups,
-      beforeFiltering,
-      afterFiltering: activeGroups.length,
-      activeGroupNames: activeGroups.map(g => g.name)
-    });
-  } else {
-    debugLog('Content', 'No group filtering (using all enabled groups)', {
-      activeGroupNames: activeGroups.map(g => g.name)
-    });
   }
 
-  // If no active groups after filtering, return
   if (activeGroups.length === 0) {
-    debugLog('Content', 'No active groups after filtering, skipping highlighting');
-    return;
+    debugLog('No active groups');
+    return null;
   }
 
+  // Build phrase map
   const mode = matchedDomain.mode;
   const phraseMap: PhraseMap = new Map();
 
@@ -398,99 +270,166 @@ async function highlightPage() {
     }
   }
 
-  // Use the new Highlighter class and store it globally
-  currentHighlighter = new Highlighter();
-  currentHighlighter.setPhrases(phraseMap, mode);
-  currentHighlighter.start();
+  debugLog('Active config', {
+    domain: matchedDomain.domain,
+    mode,
+    groups: activeGroups.map(g => g.name),
+    phrases: phraseMap.size
+  });
+
+  return { phraseMap, mode };
 }
 
-// Remove all existing highlights from the page
-function clearHighlights() {
-  if (currentHighlighter) {
-    currentHighlighter.stop();
-    currentHighlighter = null;
+async function highlightPage() {
+  const startTime = performance.now();
+  debugLog('Highlighting page...');
+
+  const config = await getActiveConfig();
+  if (!config) {
+    clearAllHighlights();
+    currentPhraseMap = null;
+    return;
   }
 
-  // Remove all highlight spans
-  const highlights = document.querySelectorAll('[data-makeitpop-highlight]');
-  highlights.forEach(span => {
-    const parent = span.parentNode;
-    if (parent) {
-      // Replace the span with its text content
-      const textNode = document.createTextNode(span.textContent || '');
-      parent.replaceChild(textNode, span);
-      // Normalize to merge adjacent text nodes
-      parent.normalize();
-    }
+  currentPhraseMap = config.phraseMap;
+
+  const textNodes = collectTextNodes(document.body);
+  const highlightCount = highlightNodes(textNodes, config.phraseMap);
+
+  const duration = performance.now() - startTime;
+  debugLog(`Highlighted ${highlightCount} matches in ${duration.toFixed(0)}ms`, {
+    textNodes: textNodes.length,
+    phrases: config.phraseMap.size
   });
 }
 
-// Re-highlight the page (clear old highlights and apply new ones)
 async function reHighlightPage() {
-  debugLog('Content', 'reHighlightPage() called');
-  const highlightsBefore = document.querySelectorAll('[data-makeitpop-highlight]').length;
-  debugLog('Content', `Clearing ${highlightsBefore} existing highlights`);
+  debugLog('Re-highlighting page...');
+  const cleared = clearAllHighlights();
+  debugLog(`Cleared ${cleared} highlights`);
 
-  clearHighlights();
+  // Clear matcher cache so it rebuilds with new settings
+  clearMatcherCache();
 
   await highlightPage();
-
-  const highlightsAfter = document.querySelectorAll('[data-makeitpop-highlight]').length;
-  debugLog('Content', 'Re-highlight complete', {
-    highlightsBefore,
-    highlightsAfter,
-    delta: highlightsAfter - highlightsBefore
-  });
 }
 
-// Wait for page to fully load and React hydration to complete before highlighting
-function initHighlighting() {
-  // If page is already loaded, wait a bit for hydration
+// =============================================================================
+// MutationObserver - Only highlight NEW content
+// =============================================================================
+
+function startObserver() {
+  if (mutationObserver) {
+    mutationObserver.disconnect();
+  }
+
+  mutationObserver = new MutationObserver((mutations) => {
+    if (!currentPhraseMap) return;
+
+    // Collect only ADDED nodes that we should process
+    const addedNodes: Node[] = [];
+
+    for (const mutation of mutations) {
+      // Only care about added nodes
+      if (mutation.type !== 'childList' || mutation.addedNodes.length === 0) continue;
+
+      for (const node of mutation.addedNodes) {
+        // Skip our own highlights
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          if ((node as Element).hasAttribute('data-makeitpop')) continue;
+        }
+
+        // Skip text nodes in skip elements
+        if (node.nodeType === Node.TEXT_NODE) {
+          const parent = node.parentNode as Element;
+          if (!parent || shouldSkipElement(parent)) continue;
+          if (parent.hasAttribute?.('data-makeitpop')) continue;
+        }
+
+        addedNodes.push(node);
+      }
+    }
+
+    if (addedNodes.length === 0) return;
+
+    // Collect text nodes from added content
+    const textNodes: Text[] = [];
+    for (const node of addedNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        textNodes.push(node as Text);
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        textNodes.push(...collectTextNodes(node));
+      }
+    }
+
+    if (textNodes.length === 0) return;
+
+    debugLog(`MutationObserver: Processing ${textNodes.length} new text nodes`);
+    const count = highlightNodes(textNodes, currentPhraseMap);
+    if (count > 0) {
+      debugLog(`MutationObserver: Added ${count} highlights`);
+    }
+  });
+
+  mutationObserver.observe(document.body, {
+    childList: true,
+    subtree: true
+    // Note: NOT watching characterData - we don't care about typing
+  });
+
+  debugLog('MutationObserver started');
+}
+
+function stopObserver() {
+  if (mutationObserver) {
+    mutationObserver.disconnect();
+    mutationObserver = null;
+    debugLog('MutationObserver stopped');
+  }
+}
+
+// =============================================================================
+// Storage Change Listener - Re-highlight when settings change
+// =============================================================================
+
+let reHighlightTimeout: number | undefined;
+
+browserAPI.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== 'local') return;
+
+  // Skip debug mode changes
+  if (changes.debugMode && Object.keys(changes).length === 1) return;
+
+  if (changes.groups || changes.domains || changes.enabled) {
+    debugLog('Settings changed, scheduling re-highlight', {
+      changed: Object.keys(changes).filter(k => k !== 'debugMode')
+    });
+
+    // Debounce re-highlighting
+    clearTimeout(reHighlightTimeout);
+    reHighlightTimeout = window.setTimeout(() => {
+      reHighlightPage();
+    }, 300);
+  }
+});
+
+// =============================================================================
+// Initialization
+// =============================================================================
+
+function init() {
+  // Wait for page to be ready
   if (document.readyState === 'complete') {
-    // Give React time to hydrate (typical hydration takes 100-500ms)
-    setTimeout(highlightPage, 500);
+    setTimeout(() => {
+      highlightPage().then(() => startObserver());
+    }, 500);
   } else {
-    // Wait for full page load, then delay for hydration
     window.addEventListener('load', () => {
-      setTimeout(highlightPage, 500);
+      setTimeout(() => {
+        highlightPage().then(() => startObserver());
+      }, 500);
     });
   }
 }
 
-// Debounced re-highlight to prevent race conditions from rapid storage changes
-let reHighlightTimeout: number | undefined;
-const debouncedReHighlight = () => {
-  debugLog('Content', 'Debounce timer reset/started', { delayMs: 300 });
-  clearTimeout(reHighlightTimeout);
-  reHighlightTimeout = window.setTimeout(() => {
-    debugLog('Content', 'Debounce timer fired → calling reHighlightPage()');
-    reHighlightPage();
-  }, 300); // Wait 300ms after last change before re-highlighting
-};
-
-// Listen for storage changes to re-highlight when settings are updated
-browserAPI.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local') {
-    // Check if groups or domains changed
-    if (changes.groups || changes.domains || changes.enabled) {
-      debugLog('Content', 'Storage change detected', {
-        changedKeys: Object.keys(changes),
-        domains: changes.domains ? {
-          oldLength: changes.domains.oldValue?.length,
-          newLength: changes.domains.newValue?.length
-        } : undefined,
-        groups: changes.groups ? {
-          oldLength: changes.groups.oldValue?.length,
-          newLength: changes.groups.newValue?.length
-        } : undefined,
-        enabled: changes.enabled ? {
-          old: changes.enabled.oldValue,
-          new: changes.enabled.newValue
-        } : undefined
-      });
-      debouncedReHighlight();
-    }
-  }
-});
-
-initHighlighting();
+init();
