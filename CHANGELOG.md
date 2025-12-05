@@ -5,17 +5,23 @@ All notable changes to Make It Pop will be documented in this file.
 ## [1.0.3] - Unreleased
 
 ### Added
-[#46](https://github.com/gerrywastaken/make-it-pop/pull/46)
 - Changelog documenting all version history with links to PRs and commits (yes, this thing you're reading right now)... [#35](https://github.com/gerrywastaken/make-it-pop/pull/35)
 - User-controlled permission system with "all-sites" option for easier setup... [fbf3c1d](https://github.com/gerrywastaken/make-it-pop/commit/fbf3c1d)
 - Manual permission request button for domains that need explicit permission... [21630fc](https://github.com/gerrywastaken/make-it-pop/commit/21630fc)
 - Tray icon permission notification using optional host permissions... [2ce6e54](https://github.com/gerrywastaken/make-it-pop/commit/2ce6e54)
+- Debug mode for troubleshooting issues (tap the version number 5 times in settings to unlock, like Android developer options)... [23cd7a8](https://github.com/gerrywastaken/make-it-pop/commit/23cd7a8)
 
 ### Changed
-- Redesigned groups UI with single mode toggle, click-to-edit color controls, and minimal phrase tags for improved usability. Modularized the UI. Improved button contrast and domain label spacing in settings page
+- Redesigned groups UI with single mode toggle, click-to-edit color controls, and minimal phrase tags for improved usability... [fe2ed63](https://github.com/gerrywastaken/make-it-pop/commit/fe2ed63)
+- Groups now auto-save as you make changes (no more save/cancel buttons)... [6e8ab9a](https://github.com/gerrywastaken/make-it-pop/commit/6e8ab9a)
+- Highlights now update instantly when you change settings in the popup (no page refresh needed)... [8a3c8e9](https://github.com/gerrywastaken/make-it-pop/commit/8a3c8e9)
+- Improved button contrast and domain label spacing in settings page... [923b953](https://github.com/gerrywastaken/make-it-pop/commit/923b953)
 - Improved developer experience with standalone UI development environment and Mozilla Add-ons automated upload workflows... [506e64a](https://github.com/gerrywastaken/make-it-pop/commit/506e64a), [903d40b](https://github.com/gerrywastaken/make-it-pop/commit/903d40b)
 
 ### Fixed
+- Extension no longer freezes or slows down pages with lots of content (Firefox users were seeing "slowing down your browser" warnings)... [#47](https://github.com/gerrywastaken/make-it-pop/pull/47)
+- Highlights no longer flicker back after unchecking a group in the popup... [04bc086](https://github.com/gerrywastaken/make-it-pop/commit/04bc086)
+- Unchecking all groups now correctly removes all highlights... [8ca7bbd](https://github.com/gerrywastaken/make-it-pop/commit/8ca7bbd)
 - Firefox permission request issues causing the extension to not work properly on some sites... [#34](https://github.com/gerrywastaken/make-it-pop/pull/34)
 - Firefox compatibility for background script... [659a546](https://github.com/gerrywastaken/make-it-pop/commit/659a546)
 
