@@ -130,8 +130,7 @@ jobs:
                 "release_notes": {
                   "en-US": $release_notes
                 },
-                "license": "MIT",
-                "source": "makeitpop-source.zip"
+                "license": "MIT"
               }
             }' > amo-metadata.json
 
@@ -190,5 +189,6 @@ jobs:
           channel: listed
           apiKey: ${{ secrets.MOZILLA_JWT_ISSUER }}
           apiSecret: ${{ secrets.MOZILLA_JWT_SECRET }}
-          addon-guid: ${{ vars.MOZILLA_EXTENSIONS_ID }}
-          amoMetadata: amo-metadata.json
+          metaDataFile: amo-metadata.json
+          sourceCode: makeitpop-source.zip
+          timeout: 60000
