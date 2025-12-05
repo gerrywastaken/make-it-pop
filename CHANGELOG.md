@@ -2,7 +2,7 @@
 
 All notable changes to Make It Pop will be documented in this file.
 
-## [1.0.3] - Unreleased
+## [1.0.3]
 
 ### Added
 - Changelog documenting all version history with links to PRs and commits (yes, this thing you're reading right now)... [#35](https://github.com/gerrywastaken/make-it-pop/pull/35)
