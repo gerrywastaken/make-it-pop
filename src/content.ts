@@ -108,7 +108,8 @@ function shouldSkipElement(element: Element): boolean {
 // Highlighting - Apply all matches at once (no recursion!)
 // =============================================================================
 
-function highlightTextNode(node: Text, phraseMap: PhraseMap): number {
+// Exported for testing
+export function highlightTextNode(node: Text, phraseMap: PhraseMap): number {
   const text = node.textContent || '';
   if (text.trim() === '') return 0;
 
@@ -159,7 +160,8 @@ function highlightTextNode(node: Text, phraseMap: PhraseMap): number {
   return highlightCount;
 }
 
-function collectTextNodes(root: Node): Text[] {
+// Exported for testing
+export function collectTextNodes(root: Node): Text[] {
   const textNodes: Text[] = [];
 
   function walk(node: Node) {
@@ -187,7 +189,8 @@ function collectTextNodes(root: Node): Text[] {
   return textNodes;
 }
 
-function highlightNodes(nodes: Text[], phraseMap: PhraseMap): number {
+// Exported for testing
+export function highlightNodes(nodes: Text[], phraseMap: PhraseMap): number {
   let totalHighlights = 0;
   for (const node of nodes) {
     // Check if node is still in DOM and parent hasn't been highlighted
