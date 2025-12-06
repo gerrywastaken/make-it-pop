@@ -5,7 +5,7 @@ All notable changes to Make It Pop will be documented in this file.
 ## [1.0.4]
 
 ### Fixed
-- Export button and grant permissions button errors after code refactoring. Also added tests to prevent future regressions [1e91216]([https://github.com/gerrywastaken/make-it-pop/commit/1e91216)
+- Export button and grant permissions button errors after code refactoring. Also added tests to prevent future regressions [#51](https://github.com/gerrywastaken/make-it-pop/pull/51)
 
 ## [1.0.3]
 
