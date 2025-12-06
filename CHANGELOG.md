@@ -2,6 +2,11 @@
 
 All notable changes to Make It Pop will be documented in this file.
 
+## [1.0.4]
+
+### Fixed
+- Export button and grant permissions button errors after code refactoring. Also added to prevent future regressions [1e91216]([https://github.com/gerrywastaken/make-it-pop/commit/1e91216)
+
 ## [1.0.3]
 
 ### Added
@@ -88,7 +93,8 @@ All notable changes to Make It Pop will be documented in this file.
 - Extension ID format for Firefox... [#15](https://github.com/gerrywastaken/make-it-pop/pull/15)
 - Build permissions for release creation... [fd85528](https://github.com/gerrywastaken/make-it-pop/commit/fd85528)
 
-[1.0.3]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.2-20251114-205559...HEAD
+[1.0.4]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.2-20251114-205559...v1.0.3
 [1.0.2]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.1-20251113-172722...v1.0.2-20251114-205559
 [1.0.1]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.0-20251108-135215...v1.0.1-20251113-172722
 [1.0.0]: https://github.com/gerrywastaken/make-it-pop/releases/tag/v1.0.0-20251106-153915
