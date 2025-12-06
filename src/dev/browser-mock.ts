@@ -82,6 +82,11 @@ const mockBrowserAPI = {
           }
         }
       }
+    },
+    onChanged: {
+      addListener: (callback: any) => {
+        console.log('[Mock] storage.onChanged.addListener registered');
+      }
     }
   },
   permissions: {
