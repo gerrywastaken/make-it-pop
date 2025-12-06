@@ -65,10 +65,9 @@ jobs:
           workflow_name: 'gemini-invoke'
           settings: |-
             {
-              "model": {
-                "maxSessionTurns": 25
-              },
-              "telemetry": {
+                          "model": {
+                            "maxSessionTurns": 50
+                          },              "telemetry": {
                 "enabled": true,
                 "target": "local",
                 "outfile": ".gemini/telemetry.log"

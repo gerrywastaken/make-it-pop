@@ -81,10 +81,9 @@ jobs:
           workflow_name: 'gemini-triage'
           settings: |-
             {
-              "model": {
-                "maxSessionTurns": 25
-              },
-              "telemetry": {
+                          "model": {
+                            "maxSessionTurns": 50
+                          },              "telemetry": {
                 "enabled": true,
                 "target": "local",
                 "outfile": ".gemini/telemetry.log"
