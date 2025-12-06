@@ -5,7 +5,7 @@ import { browserAPI } from './types';
 import { createElement, showToast } from './utils/dom';
 import { getGroups, saveGroups, getDomains, saveDomains } from './utils/storage';
 import { exportData, importData } from './utils/importExport';
-import { requestAllSitesPermission, updatePermissionStatus } from './utils/permissions';
+import { requestAllSitesPermission, updatePermissionStatus, domainToHostPatterns } from './utils/permissions';
 import { createGroupCard, initGroupCard, updateGroupsState } from './components/groupCard';
 import { createDomainCard, initDomainCard, updateDomainsState, updateGroupsReference } from './components/domainCard';
 
@@ -417,7 +417,7 @@ document.getElementById('addDomain')?.addEventListener('click', () => {
 
 // Export data handler
 document.getElementById('exportData')!.addEventListener('click', async () => {
-  const jsonData = await exportData();
+  const jsonData = await exportData(groups, domains);
   const blob = new Blob([jsonData], { type: 'application/json5' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
