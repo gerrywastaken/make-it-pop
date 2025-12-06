@@ -5,3 +5,6 @@ dist/
 
 # Auto-generated version file
 src/version.ts
+
+.gemini/
+gha-creds-*.json
