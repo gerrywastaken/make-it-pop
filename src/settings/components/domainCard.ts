@@ -367,12 +367,24 @@ async function saveDomainFromCard(card: HTMLElement) {
       domains[index] = newDomain;
     }
     await saveDomains(domains);
-    showToast('Domain updated successfully! Remember to grant permissions (🔓 button or Settings tab).');
   } else {
     // Add new domain
     domains.push(newDomain);
     await saveDomains(domains);
-    showToast('Domain added successfully! Remember to grant permissions (🔓 button or Settings tab).');
+  }
+
+  // Automatically request permissions for the domain
+  const granted = await requestDomainPermissions(newDomain);
+
+  if (granted) {
+    showToast(id ? 'Domain updated and permissions granted!' : 'Domain added and permissions granted!');
+  } else {
+    showToast(
+      id
+        ? 'Domain updated, but permissions were denied. Click 🔓 to grant permissions.'
+        : 'Domain added, but permissions were denied. Click 🔓 to grant permissions.',
+      'warning'
+    );
   }
 
   render();
