@@ -287,7 +287,9 @@ When creating a pull request:
    git push --force-with-lease
    ```
 
-3. **Provide a concise PR description** following this format:
+3. **Create or provide PR creation information:**
+   - **When the user explicitly asks you to create a PR** (e.g., "create a pr", "make a pull request"): Run the `gh pr create` command directly using the Bash tool with a HEREDOC for proper formatting
+   - **Otherwise**: Provide a concise PR description following this format:
 
    <example>
    To checkout locally:
@@ -298,7 +300,12 @@ When creating a pull request:
 
    To create PR via CLI:
    ```bash
-   gh pr create --head BRANCH_NAME --base main --title "Fix TAILSCALE_HOSTNAME configuration" --body "Fixes 502 errors on /raw routes by properly configuring TAILSCALE_HOSTNAME.\n\n**Why:** Hardcoded hostname violated fail-fast principles and caused silent failures."
+   gh pr create --head BRANCH_NAME --base main --title "Fix TAILSCALE_HOSTNAME configuration" --body "$(cat <<'EOF'
+Fixes 502 errors on /raw routes by properly configuring TAILSCALE_HOSTNAME.
+
+**Why:** Hardcoded hostname violated fail-fast principles and caused silent failures.
+EOF
+)"
    ```
 
    or [create pr](https://github.com/gerrywastaken/REPO/pull/new/BRANCH_NAME)
