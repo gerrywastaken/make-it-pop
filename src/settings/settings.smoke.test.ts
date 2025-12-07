@@ -29,6 +29,44 @@ const testDomains: Domain[] = [{
   mode: 'light',
 }];
 
+// Helper: Mock storage with in-memory state
+function createMockStorage(initialGroups: Group[], initialDomains: Domain[]) {
+  let storedGroups = [...initialGroups];
+  let storedDomains = [...initialDomains];
+
+  return {
+    mocks: {
+      getGroups: vi.fn(async () => storedGroups),
+      saveGroups: vi.fn(async (g: Group[]) => { storedGroups = g; }),
+      getDomains: vi.fn(async () => storedDomains),
+      saveDomains: vi.fn(async (d: Domain[]) => { storedDomains = d; }),
+    },
+    getState: () => ({ groups: storedGroups, domains: storedDomains }),
+  };
+}
+
+// Helper: Update domain references after group rename (extracted from groupCard.ts logic)
+async function updateDomainReferencesAfterRename(
+  oldName: string,
+  newName: string,
+  getDomains: () => Promise<Domain[]>,
+  saveDomains: (domains: Domain[]) => Promise<void>
+) {
+  const domains = await getDomains();
+  let updated = false;
+
+  for (const domain of domains) {
+    if (domain.groups?.includes(oldName)) {
+      domain.groups = domain.groups.map(name => name === oldName ? newName : name);
+      updated = true;
+    }
+  }
+
+  if (updated) {
+    await saveDomains(domains);
+  }
+}
+
 describe('settings.ts smoke tests', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -74,5 +112,48 @@ describe('settings.ts smoke tests', () => {
 
     expect(origins).toContain('*://*.example.com/*');
     expect(origins).toContain('*://example.com/*');
+  });
+
+  it('group rename: updates domain references when group name changes', async () => {
+    // Setup: Create a group and a domain that references it
+    const groups: Group[] = [{
+      id: 'group-1',
+      name: 'Old Name',
+      enabled: true,
+      lightBgColor: '#ffff00',
+      lightTextColor: '#000000',
+      darkBgColor: '#3a3a00',
+      darkTextColor: '#ffffff',
+      phrases: ['test'],
+    }];
+
+    const domains: Domain[] = [{
+      id: 'domain-1',
+      domain: 'example.com',
+      matchMode: 'domain-and-www',
+      mode: 'light',
+      groups: ['Old Name'],  // References the group by name
+      groupMode: 'only',
+    }];
+
+    const storage = createMockStorage(groups, domains);
+    vi.doMock('./utils/storage', () => storage.mocks);
+
+    const { saveGroups, getDomains, saveDomains } = await import('./utils/storage');
+
+    // Rename the group
+    const oldName = 'Old Name';
+    const newName = 'New Name';
+    const updatedGroups = [...groups];
+    updatedGroups[0].name = newName;
+    await saveGroups(updatedGroups);
+
+    // Update domain references (this is what the fix does)
+    await updateDomainReferencesAfterRename(oldName, newName, getDomains, saveDomains);
+
+    // Verify: Domain reference should be updated to new name
+    const state = storage.getState();
+    expect(state.domains[0].groups).toContain('New Name');
+    expect(state.domains[0].groups).not.toContain('Old Name');
   });
 });

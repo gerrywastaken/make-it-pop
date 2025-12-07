@@ -5,7 +5,7 @@
 import type { Group } from '../types';
 import { browserAPI } from '../types';
 import { createElement, createText, showToast } from '../utils/dom';
-import { getGroups, saveGroups } from '../utils/storage';
+import { getGroups, saveGroups, getDomains, saveDomains } from '../utils/storage';
 
 // Debug logging infrastructure (shared with content.ts and popup.ts)
 let debugEnabled = false;
@@ -376,6 +376,9 @@ async function autoSaveGroup(card: HTMLElement) {
 
   debugLog('Settings', 'autoSaveGroup() called', { groupId: id, groupName: group.name });
 
+  // Store the old name to check if it changes
+  const oldName = group.name;
+
   // Get current values from the card
   const nameInput = card.querySelector('.group-name input') as HTMLInputElement;
   const toggleInput = card.querySelector('.toggle-group-enabled') as HTMLInputElement;
@@ -421,6 +424,37 @@ async function autoSaveGroup(card: HTMLElement) {
 
   // Save to storage
   await saveGroups(groups);
+
+  // If the group name changed, update all domain references
+  if (oldName !== name) {
+    debugLog('Settings', 'Group name changed, updating domain references', {
+      oldName,
+      newName: name
+    });
+
+    const domains = await getDomains();
+    let domainsUpdated = false;
+
+    for (const domain of domains) {
+      if (domain.groups && domain.groups.includes(oldName)) {
+        // Replace the old name with the new name
+        domain.groups = domain.groups.map(groupName =>
+          groupName === oldName ? name : groupName
+        );
+        domainsUpdated = true;
+        debugLog('Settings', 'Updated domain reference', {
+          domainId: domain.id,
+          domain: domain.domain
+        });
+      }
+    }
+
+    if (domainsUpdated) {
+      await saveDomains(domains);
+      debugLog('Settings', 'Domain references updated successfully');
+    }
+  }
+
   debugLog('Settings', 'autoSaveGroup() complete - storage.set() finished');
 }
 
