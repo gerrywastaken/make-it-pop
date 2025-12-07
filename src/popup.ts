@@ -1,3 +1,5 @@
+import { addOrUpdateDomainWithPermission } from './storage';
+
 const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
 // Debug logging infrastructure (shared with content.ts)
@@ -438,7 +440,7 @@ document.getElementById('enableToggle')!.addEventListener('change', async (e) =>
 });
 
 // Event: Add This Domain button
-document.getElementById('addDomain')!.addEventListener('click', async () => {
+document.getElementById('addDomain')!.addEventListener('click', () => {
   if (!currentDomain) return;
 
   // Add new domain with default settings
@@ -449,19 +451,30 @@ document.getElementById('addDomain')!.addEventListener('click', async () => {
     mode: 'light'
   };
 
-  // Read fresh data to avoid overwriting concurrent changes
-  const data = await browserAPI.storage.local.get('domains');
-  const freshDomains = data.domains || [];
-  freshDomains.push(newDomain);
-  currentDomainConfig = newDomain;
-  await browserAPI.storage.local.set({ domains: freshDomains });
+  // Use shared function to add domain with permission request
+  // IMPORTANT: Must call directly from click handler (not async/await before it)
+  addOrUpdateDomainWithPermission(newDomain)
+    .then(granted => {
+      // Update local state (function already saved to storage)
+      currentDomainConfig = newDomain;
+      domains.push(newDomain);
 
-  // Update local copy and UI
-  domains = freshDomains;
-  updateStats();
-  renderDomainConfig();
-  updateButtons();
-  // No need to reload - content script listens for storage changes
+      // Update UI
+      updateStats();
+      renderDomainConfig();
+      updateButtons();
+
+      // Show feedback (optional - the user sees the browser permission dialog)
+      if (!granted) {
+        console.warn('[MakeItPop] Permission denied for domain:', currentDomain);
+      }
+      // No need to reload - content script listens for storage changes
+    })
+    .catch(error => {
+      console.error('[MakeItPop] Failed to add domain:', error);
+      // Consider showing an error to the user if a UI mechanism exists
+      alert('Failed to add domain. Please try again.');
+    });
 });
 
 // Event: Remove This Domain button

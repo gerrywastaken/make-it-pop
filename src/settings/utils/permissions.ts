@@ -4,27 +4,10 @@
 
 import type { Domain } from '../types';
 import { browserAPI } from '../types';
+import { domainToHostPatterns as domainToHostPatternsImpl } from '../../storage';
 
-export function domainToHostPatterns(domainConfig: Domain): string[] {
-  const { domain, matchMode } = domainConfig;
-  const patterns: string[] = [];
-
-  switch (matchMode) {
-    case 'domain-and-www':
-      patterns.push(`*://${domain}/*`);
-      patterns.push(`*://www.${domain}/*`);
-      break;
-    case 'all-subdomains':
-      patterns.push(`*://*.${domain}/*`);
-      patterns.push(`*://${domain}/*`); // Include base domain
-      break;
-    case 'exact':
-      patterns.push(`*://${domain}/*`);
-      break;
-  }
-
-  return patterns;
-}
+// Re-export centralized function
+export const domainToHostPatterns = domainToHostPatternsImpl;
 
 export async function requestDomainPermissions(domainConfig: Domain): Promise<boolean> {
   try {
