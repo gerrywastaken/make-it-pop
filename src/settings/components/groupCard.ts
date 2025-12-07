@@ -51,10 +51,12 @@ initDebugMode();
 // Module-level state for groups (will be initialized by parent)
 let groups: Group[] = [];
 let render: () => void = () => {};
+let reloadDomains: () => Promise<void> = async () => {};
 
-export function initGroupCard(initialGroups: Group[], renderFn: () => void) {
+export function initGroupCard(initialGroups: Group[], renderFn: () => void, reloadDomainsFn: () => Promise<void>) {
   groups = initialGroups;
   render = renderFn;
+  reloadDomains = reloadDomainsFn;
 }
 
 export function updateGroupsState(newGroups: Group[]) {
@@ -452,6 +454,10 @@ async function autoSaveGroup(card: HTMLElement) {
     if (domainsUpdated) {
       await saveDomains(domains);
       debugLog('Settings', 'Domain references updated successfully');
+
+      // Reload domains in settings.ts to update the in-memory state
+      await reloadDomains();
+      debugLog('Settings', 'Reloaded domains into memory');
     }
   }
 
