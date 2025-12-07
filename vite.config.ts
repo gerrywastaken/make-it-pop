@@ -6,10 +6,10 @@ import { execSync } from 'child_process';
 const entry = process.env.ENTRY || 'content';
 const entryPath = entry === 'settings' ? 'src/settings/settings.ts' : `src/${entry}.ts`;
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   build: {
     outDir: 'dist',
-    emptyOutDir: entry === 'content', // Only empty on first build
+    emptyOutDir: entry === 'content' && command === 'build', // Only empty on production builds
     lib: {
       entry: resolve(__dirname, entryPath),
       name: entry,
@@ -47,4 +47,4 @@ export default defineConfig({
       }
     }
   ],
-});
+}));

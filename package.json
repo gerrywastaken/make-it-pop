@@ -3,7 +3,7 @@
   "version": "1.0.4",
   "type": "module",
   "scripts": {
-    "dev": "vite build --watch",
+    "dev": "concurrently \"ENTRY=content vite build --watch\" \"ENTRY=popup vite build --watch\" \"ENTRY=background vite build --watch\" \"ENTRY=settings vite build --watch\"",
     "dev:ui": "vite --config vite.config.dev.ts",
     "dev:firefox": "web-ext run --source-dir ./dist --firefox-profile=$HOME/firefox-dev-profile --profile-create-if-missing --keep-profile-changes",
     "dev:watch": "concurrently --kill-others-on-fail \"pnpm dev\" \"pnpm dev:firefox\"",
