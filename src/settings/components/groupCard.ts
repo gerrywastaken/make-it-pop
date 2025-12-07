@@ -5,7 +5,7 @@
 import type { Group } from '../types';
 import { browserAPI } from '../types';
 import { createElement, createText, showToast } from '../utils/dom';
-import { getGroups, saveGroups, getDomains, saveDomains } from '../utils/storage';
+import { saveGroups, updateDomainReferencesAfterGroupRename } from '../utils/storage';
 
 // Debug logging infrastructure (shared with content.ts and popup.ts)
 let debugEnabled = false;
@@ -429,35 +429,24 @@ async function autoSaveGroup(card: HTMLElement) {
 
   // If the group name changed, update all domain references
   if (oldName !== name) {
-    debugLog('Settings', 'Group name changed, updating domain references', {
-      oldName,
-      newName: name
-    });
+    try {
+      debugLog('Settings', 'Group name changed, updating domain references', {
+        oldName,
+        newName: name
+      });
 
-    const domains = await getDomains();
-    let domainsUpdated = false;
+      const domainsUpdated = await updateDomainReferencesAfterGroupRename(oldName, name);
 
-    for (const domain of domains) {
-      if (domain.groups && domain.groups.includes(oldName)) {
-        // Replace the old name with the new name
-        domain.groups = domain.groups.map(groupName =>
-          groupName === oldName ? name : groupName
-        );
-        domainsUpdated = true;
-        debugLog('Settings', 'Updated domain reference', {
-          domainId: domain.id,
-          domain: domain.domain
-        });
+      if (domainsUpdated) {
+        debugLog('Settings', 'Domain references updated successfully');
+
+        // Reload domains in settings.ts to update the in-memory state
+        await reloadDomains();
+        debugLog('Settings', 'Reloaded domains into memory');
       }
-    }
-
-    if (domainsUpdated) {
-      await saveDomains(domains);
-      debugLog('Settings', 'Domain references updated successfully');
-
-      // Reload domains in settings.ts to update the in-memory state
-      await reloadDomains();
-      debugLog('Settings', 'Reloaded domains into memory');
+    } catch (error) {
+      console.error('[Make It Pop] Failed to update domain references after group rename:', error);
+      showToast('Error updating domain references. Please check domain settings.', 'warning');
     }
   }
 
