@@ -122,13 +122,21 @@ async function init() {
   domains = await getDomains();
 
   // Initialize components with state and render function
-  initGroupCard(groups, render);
+  initGroupCard(groups, render, reloadDomains);
   initDomainCard(domains, groups, render);
 
   render();
   displayVersionInfo();
   setupTabSwitching();
   updatePermissionStatus();
+}
+
+// Reload domains from storage and update in-memory state
+async function reloadDomains() {
+  domains = await getDomains();
+  updateDomainsState(domains);
+  updateGroupsReference(groups);
+  renderDomains(); // Re-render to update UI
 }
 
 // Check and display current permission status
