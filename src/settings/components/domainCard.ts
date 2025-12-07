@@ -4,9 +4,9 @@
 
 import type { Domain } from '../types';
 import { createElement, createText, showToast } from '../utils/dom';
-import { getDomains, saveDomains } from '../utils/storage';
+import { getDomains } from '../utils/storage';
 import { getGroups } from '../utils/storage';
-import { requestDomainPermissions } from '../utils/permissions';
+import { addOrUpdateDomainWithPermission } from '../../storage';
 
 // Module-level state (will be initialized by parent)
 let domains: Domain[] = [];
@@ -360,22 +360,37 @@ async function saveDomainFromCard(card: HTMLElement) {
     }
   }
 
-  if (id) {
-    // Update existing domain
-    const index = domains.findIndex(d => d.id === id);
-    if (index !== -1) {
-      domains[index] = newDomain;
-    }
-    await saveDomains(domains);
-    showToast('Domain updated successfully! Remember to grant permissions (🔓 button or Settings tab).');
-  } else {
-    // Add new domain
-    domains.push(newDomain);
-    await saveDomains(domains);
-    showToast('Domain added successfully! Remember to grant permissions (🔓 button or Settings tab).');
-  }
+  // Use shared function to add/update domain with permission request
+  addOrUpdateDomainWithPermission(newDomain)
+    .then(granted => {
+      // Update local copy to match storage (don't mutate - the function already saved it)
+      if (id) {
+        const index = domains.findIndex(d => d.id === id);
+        if (index !== -1) {
+          domains[index] = newDomain;
+        }
+      } else {
+        domains.push(newDomain);
+      }
 
-  render();
+      // Show appropriate toast
+      if (granted) {
+        showToast(id ? 'Domain updated and permissions granted!' : 'Domain added and permissions granted!');
+      } else {
+        showToast(
+          id
+            ? 'Domain updated, but permissions were denied. Click 🔓 to grant permissions.'
+            : 'Domain added, but permissions were denied. Click 🔓 to grant permissions.',
+          'warning'
+        );
+      }
+
+      render();
+    })
+    .catch(error => {
+      console.error('[MakeItPop] Failed to save domain:', error);
+      showToast('Failed to save domain. Please try again.', 'warning');
+    });
 }
 
 function cancelDomainEdit(card: HTMLElement) {
