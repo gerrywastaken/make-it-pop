@@ -43,6 +43,84 @@ export async function saveDomains(domains: Domain[]): Promise<void> {
   await browserAPI.storage.local.set({ domains });
 }
 
+/**
+ * Convert domain config to host permission patterns
+ */
+export function domainToHostPatterns(domainConfig: Domain): string[] {
+  const { domain, matchMode } = domainConfig;
+  const patterns: string[] = [];
+
+  switch (matchMode) {
+    case 'domain-and-www':
+      // Handle domains that already have www. prefix
+      if (domain.startsWith('www.')) {
+        // Domain is www.example.com -> match www.example.com and example.com
+        patterns.push(`*://${domain}/*`);
+        patterns.push(`*://${domain.substring(4)}/*`); // Remove 'www.'
+      } else {
+        // Domain is example.com -> match example.com and www.example.com
+        patterns.push(`*://${domain}/*`);
+        patterns.push(`*://www.${domain}/*`);
+      }
+      break;
+    case 'all-subdomains':
+      patterns.push(`*://*.${domain}/*`);
+      patterns.push(`*://${domain}/*`); // Include base domain
+      break;
+    case 'exact':
+      patterns.push(`*://${domain}/*`);
+      break;
+  }
+
+  return patterns;
+}
+
+/**
+ * Add or update a domain with automatic permission request
+ * IMPORTANT: This must be called directly from a user gesture (like a click event)
+ * @param domain The domain to add or update
+ * @returns Promise<boolean> - true if permission was granted, false if denied
+ * @throws Error if storage operation fails (caller should handle with .catch())
+ */
+export function addOrUpdateDomainWithPermission(domain: Domain): Promise<boolean> {
+  // Request permissions FIRST (must be directly from user gesture, before any async operations)
+  // IMPORTANT: Cannot use async/await - Firefox requires direct call from user action
+  const origins = domainToHostPatterns(domain);
+  console.log('[MakeItPop] Requesting permissions for:', origins);
+
+  return browserAPI.permissions.request({ origins })
+    .then(async granted => {
+      console.log('[MakeItPop] Permission granted:', granted);
+
+      // Now save the domain (regardless of permission result)
+      // Always read fresh data from storage to avoid overwriting concurrent changes
+      const data = await browserAPI.storage.local.get('domains');
+      const domains = data.domains || [];
+
+      const existingIndex = domains.findIndex(d => d.id === domain.id);
+      if (existingIndex !== -1) {
+        // Update existing domain
+        domains[existingIndex] = domain;
+      } else {
+        // Add new domain
+        domains.push(domain);
+      }
+
+      await saveDomains(domains);
+      return granted;
+    })
+    .catch(error => {
+      // Only catch permission request errors, let storage errors propagate
+      if (error.message && error.message.includes('permissions')) {
+        console.error('[MakeItPop] Permission request failed:', error);
+        return false;
+      }
+      // Re-throw storage errors so caller can handle them
+      console.error('[MakeItPop] Storage error while adding domain:', error);
+      throw error;
+    });
+}
+
 export async function exportData(): Promise<string> {
   const groups = await getGroups();
   const domains = await getDomains();
