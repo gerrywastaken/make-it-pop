@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "vite build --watch",
     "dev:ui": "vite --config vite.config.dev.ts",
+    "dev:firefox": "web-ext run --source-dir ./dist --firefox-profile=$HOME/firefox-dev-profile --profile-create-if-missing --keep-profile-changes",
+    "dev:watch": "vite build --watch & web-ext run --source-dir ./dist --firefox-profile=$HOME/firefox-dev-profile --profile-create-if-missing --keep-profile-changes",
     "prebuild": "node scripts/generate-version.js",
     "build": "ENTRY=content vite build && ENTRY=popup vite build && ENTRY=background vite build && ENTRY=settings vite build",
     "test": "vitest"
@@ -16,7 +18,8 @@
     "sharp": "^0.34.5",
     "typescript": "^5.6.0",
     "vite": "^5.4.0",
-    "vitest": "^4.0.8"
+    "vitest": "^4.0.8",
+    "web-ext": "^9.2.0"
   },
   "dependencies": {
     "json5": "^2.2.3"
