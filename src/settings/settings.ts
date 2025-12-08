@@ -1,11 +1,19 @@
 import JSON5 from 'json5';
 import { BUILD_VERSION_NAME, BUILD_COMMIT, BUILD_TIME } from '../version';
 import type { Group, Domain } from './types';
-import { browserAPI } from './types';
+import {
+  browserAPI,
+  storageGetMultiple,
+  storageSet,
+  getDebugMode,
+  setDebugMode,
+  hasPermissions,
+  requestPermissions,
+} from '../browserApi';
 import { createElement, showToast } from './utils/dom';
 import { getGroups, saveGroups, getDomains, saveDomains } from './utils/storage';
 import { exportData, importData } from './utils/importExport';
-import { requestAllSitesPermission, updatePermissionStatus, domainToHostPatterns } from './utils/permissions';
+import { domainToHostPatterns } from './utils/permissions';
 import { createGroupCard, initGroupCard, updateGroupsState } from './components/groupCard';
 import { createDomainCard, initDomainCard, updateDomainsState, updateGroupsReference } from './components/domainCard';
 
@@ -13,7 +21,7 @@ let groups: Group[] = [];
 let domains: Domain[] = [];
 
 async function migrateData() {
-  const rawData = await browserAPI.storage.local.get(['groups', 'domains']);
+  const rawData = await storageGetMultiple(['groups', 'domains']);
   let groupsNeedsSave = false;
   let domainsNeedsSave = false;
 
@@ -147,9 +155,7 @@ async function updatePermissionStatus() {
   if (!statusText || !grantButton) return;
 
   try {
-    const hasAllSitesPermission = await browserAPI.permissions.contains({
-      origins: ['<all_urls>']
-    });
+    const hasAllSitesPermission = await hasPermissions(['<all_urls>']);
 
     if (hasAllSitesPermission) {
       statusText.textContent = '✅ All sites permission granted';
@@ -166,21 +172,6 @@ async function updatePermissionStatus() {
     console.error('[MakeItPop] Error checking permissions:', error);
     statusText.textContent = '❌ Error checking permissions';
     statusText.style.color = 'var(--danger-color, red)';
-  }
-}
-
-// Request permission for all sites
-async function requestAllSitesPermission(): Promise<boolean> {
-  try {
-    console.log('[MakeItPop] Requesting permission for all sites...');
-    const granted = await browserAPI.permissions.request({
-      origins: ['<all_urls>']
-    });
-    console.log('[MakeItPop] All sites permission granted:', granted);
-    return granted;
-  } catch (error) {
-    console.error('[MakeItPop] Error requesting all sites permission:', error);
-    return false;
   }
 }
 
@@ -203,19 +194,6 @@ function setupTabSwitching() {
       }
     });
   });
-}
-
-// Toast notification helper
-function showToast(message: string, type: 'success' | 'warning' = 'success') {
-  const toast = document.getElementById('toast');
-  if (!toast) return;
-
-  toast.textContent = message;
-  toast.className = `toast ${type} show`;
-
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, 3000);
 }
 
 function displayVersionInfo() {
@@ -346,7 +324,7 @@ document.getElementById('domainsList')!.addEventListener('click', async (e) => {
     console.log('[MakeItPop] Requesting permissions for:', origins);
 
     // Call permissions.request() directly without async/await
-    browserAPI.permissions.request({ origins }).then(granted => {
+    requestPermissions(origins).then(granted => {
       console.log('[MakeItPop] Permission granted:', granted);
       if (granted) {
         showToast(`Permission granted for ${domain.domain}!`);
@@ -494,9 +472,7 @@ document.getElementById('grantAllSitesPermission')?.addEventListener('click', ()
   console.log('[MakeItPop] Grant all sites button clicked');
 
   // Call permissions.request() directly without async/await to avoid promise chain
-  browserAPI.permissions.request({
-    origins: ['<all_urls>']
-  }).then(granted => {
+  requestPermissions(['<all_urls>']).then(granted => {
     console.log('[MakeItPop] All sites permission result:', granted);
     if (granted) {
       showToast('Permission granted for all sites! The extension will now work on all configured domains.');
@@ -599,11 +575,11 @@ if (buildVersionEl) {
       clickCount = 0;
 
       // Check current state and toggle
-      const data = await browserAPI.storage.local.get('debugUnlocked');
+      const data = await storageGetMultiple(['debugUnlocked']);
       const isCurrentlyUnlocked = data.debugUnlocked || false;
       const newState = !isCurrentlyUnlocked;
 
-      await browserAPI.storage.local.set({ debugUnlocked: newState });
+      await storageSet('debugUnlocked', newState);
 
       const debugSection = document.getElementById('debugOptions');
       if (debugSection) {
@@ -617,7 +593,7 @@ if (buildVersionEl) {
 // Debug checkbox handler
 document.getElementById('debugModeCheckbox')?.addEventListener('change', async (e) => {
   const enabled = (e.target as HTMLInputElement).checked;
-  await browserAPI.storage.local.set({ debugMode: enabled });
+  await setDebugMode(enabled);
   console.log(`[Make It Pop] Debug logging ${enabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
   if (enabled) {
     console.log('[Make It Pop] Logs will appear in all consoles (page, popup, settings)');
@@ -626,7 +602,7 @@ document.getElementById('debugModeCheckbox')?.addEventListener('change', async (
 
 // Initialize debug checkbox state on page load
 async function initDebugCheckbox() {
-  const data = await browserAPI.storage.local.get(['debugMode', 'debugUnlocked']);
+  const data = await storageGetMultiple(['debugMode', 'debugUnlocked']);
   const checkbox = document.getElementById('debugModeCheckbox') as HTMLInputElement;
 
   if (checkbox) {

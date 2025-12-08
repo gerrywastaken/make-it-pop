@@ -3,7 +3,7 @@
  */
 
 import type { Group } from '../types';
-import { browserAPI } from '../types';
+import { getDebugMode, onStorageChanged } from '../../browserApi';
 import { createElement, createText, showToast } from '../utils/dom';
 import { saveGroups, updateDomainReferencesAfterGroupRename } from '../utils/storage';
 
@@ -31,17 +31,16 @@ function debugLog(component: string, message: string, data?: any) {
 
 // Initialize debug mode from storage
 async function initDebugMode() {
-  const data = await browserAPI.storage.local.get('debugMode');
-  debugEnabled = data.debugMode || false;
+  debugEnabled = await getDebugMode();
   if (debugEnabled) {
     console.log('[Make It Pop - Settings] Debug logging enabled');
   }
 }
 
 // Listen for debug mode changes
-browserAPI.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.debugMode) {
-    debugEnabled = changes.debugMode.newValue || false;
+onStorageChanged((changes) => {
+  if (changes.debugMode) {
+    debugEnabled = Boolean(changes.debugMode.newValue);
     console.log(`[Make It Pop - Settings] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
   }
 });

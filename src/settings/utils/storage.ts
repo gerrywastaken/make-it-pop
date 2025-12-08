@@ -1,27 +1,14 @@
 /**
  * Storage utilities for groups and domains
+ *
+ * Re-exports from centralized browserApi module and adds settings-specific utilities.
  */
 
-import type { Group, Domain } from '../types';
-import { browserAPI } from '../types';
+// Re-export core storage functions from centralized module
+export { getGroups, saveGroups, getDomains, saveDomains } from '../../browserApi';
 
-export async function getGroups(): Promise<Group[]> {
-  const data = await browserAPI.storage.local.get('groups');
-  return data.groups || [];
-}
-
-export async function saveGroups(groups: Group[]): Promise<void> {
-  await browserAPI.storage.local.set({ groups });
-}
-
-export async function getDomains(): Promise<Domain[]> {
-  const data = await browserAPI.storage.local.get('domains');
-  return data.domains || [];
-}
-
-export async function saveDomains(domains: Domain[]): Promise<void> {
-  await browserAPI.storage.local.set({ domains });
-}
+// Import for use in this module
+import { getDomains, saveDomains } from '../../browserApi';
 
 /**
  * Updates all domain references when a group is renamed

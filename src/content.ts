@@ -1,28 +1,14 @@
 // Content script for Make It Pop - highlights phrases on web pages
 import { findMatches, clearMatcherCache, type Match, type PhraseMap } from './matcher.js';
-
-// Types
-interface Group {
-  id: string;
-  name: string;
-  enabled: boolean;
-  lightBgColor: string;
-  lightTextColor: string;
-  darkBgColor: string;
-  darkTextColor: string;
-  phrases: string[];
-}
-
-interface Domain {
-  id: string;
-  domain: string;
-  matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';
-  mode: 'light' | 'dark';
-  groups?: string[];
-  groupMode?: 'only' | 'except';
-}
-
-const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+import {
+  browserAPI,
+  getGroups,
+  getDomains,
+  getEnabled,
+  getDebugMode,
+  onStorageChanged,
+} from './browserApi.js';
+import type { Group, Domain } from './types.js';
 
 // =============================================================================
 // Debug Logging
@@ -45,16 +31,15 @@ function debugLog(message: string, data?: any) {
 }
 
 async function initDebugMode() {
-  const data = await browserAPI.storage.local.get('debugMode');
-  debugEnabled = data.debugMode || false;
+  debugEnabled = await getDebugMode();
   if (debugEnabled) {
     console.log('[Make It Pop] Debug logging enabled');
   }
 }
 
-browserAPI.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.debugMode) {
-    debugEnabled = changes.debugMode.newValue || false;
+onStorageChanged((changes) => {
+  if (changes.debugMode) {
+    debugEnabled = Boolean(changes.debugMode.newValue);
     console.log(`[Make It Pop] Debug logging ${debugEnabled ? 'ENABLED' : 'DISABLED'}`);
   }
 });
@@ -62,18 +47,8 @@ browserAPI.storage.onChanged.addListener((changes, areaName) => {
 initDebugMode();
 
 // =============================================================================
-// Storage Helpers
+// Domain Matching
 // =============================================================================
-
-async function getGroups(): Promise<Group[]> {
-  const data = await browserAPI.storage.local.get('groups');
-  return data.groups || [];
-}
-
-async function getDomains(): Promise<Domain[]> {
-  const data = await browserAPI.storage.local.get('domains');
-  return data.domains || [];
-}
 
 function matchesDomain(domainConfig: Domain, hostname: string): boolean {
   const { domain, matchMode } = domainConfig;
@@ -228,8 +203,8 @@ let mutationObserver: MutationObserver | null = null;
 
 async function getActiveConfig(): Promise<{ phraseMap: PhraseMap; mode: 'light' | 'dark' } | null> {
   // Check if extension is enabled
-  const enabledData = await browserAPI.storage.local.get('enabled');
-  if (enabledData.enabled === false) {
+  const enabled = await getEnabled();
+  if (!enabled) {
     debugLog('Extension disabled');
     return null;
   }
@@ -397,10 +372,8 @@ function stopObserver() {
 
 let reHighlightTimeout: number | undefined;
 
-browserAPI.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'local') return;
-
-  // Skip debug mode changes
+onStorageChanged((changes) => {
+  // Skip debug mode only changes
   if (changes.debugMode && Object.keys(changes).length === 1) return;
 
   if (changes.groups || changes.domains || changes.enabled) {
