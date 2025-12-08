@@ -453,22 +453,28 @@ document.getElementById('addDomain')!.addEventListener('click', () => {
 
   // Use shared function to add domain with permission request
   // IMPORTANT: Must call directly from click handler (not async/await before it)
-  addOrUpdateDomainWithPermission(newDomain).then(granted => {
-    // Update local state
-    currentDomainConfig = newDomain;
-    domains.push(newDomain);
+  addOrUpdateDomainWithPermission(newDomain)
+    .then(granted => {
+      // Update local state (function already saved to storage)
+      currentDomainConfig = newDomain;
+      domains.push(newDomain);
 
-    // Update UI
-    updateStats();
-    renderDomainConfig();
-    updateButtons();
+      // Update UI
+      updateStats();
+      renderDomainConfig();
+      updateButtons();
 
-    // Show feedback (optional - the user sees the browser permission dialog)
-    if (!granted) {
-      console.warn('[MakeItPop] Permission denied for domain:', currentDomain);
-    }
-    // No need to reload - content script listens for storage changes
-  });
+      // Show feedback (optional - the user sees the browser permission dialog)
+      if (!granted) {
+        console.warn('[MakeItPop] Permission denied for domain:', currentDomain);
+      }
+      // No need to reload - content script listens for storage changes
+    })
+    .catch(error => {
+      console.error('[MakeItPop] Failed to add domain:', error);
+      // Consider showing an error to the user if a UI mechanism exists
+      alert('Failed to add domain. Please try again.');
+    });
 });
 
 // Event: Remove This Domain button
