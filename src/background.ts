@@ -1,23 +1,14 @@
 // Background service worker for dynamic content script injection
 // Only injects on domains that the user has configured
 
-// Inline types to avoid imports in background script
-interface Domain {
-  id: string;
-  domain: string;  // Just the domain without wildcards (e.g., "linkedin.com")
-  matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';
-  mode: 'light' | 'dark';
-  groups?: string[];
-  groupMode?: 'only' | 'except';
-}
-
-const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
-
-// Get domains from storage
-async function getDomains(): Promise<Domain[]> {
-  const data = await browserAPI.storage.local.get('domains');
-  return data.domains || [];
-}
+import type { Domain } from './types';
+import {
+  browserAPI,
+  getDomains,
+  hasPermissions,
+  requestPermissions,
+  onStorageChanged,
+} from './browserApi';
 
 // Check if a hostname matches a domain configuration
 function matchesDomain(domainConfig: Domain, hostname: string): boolean {
@@ -134,9 +125,7 @@ browserAPI.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 
   // Check if we have permission for this URL
-  const hasPermission = await browserAPI.permissions.contains({
-    origins: [url]
-  });
+  const hasPermission = await hasPermissions([url]);
   console.log('[MakeItPop Background] Has permission for', url, ':', hasPermission);
 
   if (hasPermission) {
@@ -149,11 +138,7 @@ browserAPI.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 // Listen for when NEW domains are added to storage
 // (Don't re-inject when existing domain configs are modified - content scripts handle that)
-browserAPI.storage.onChanged.addListener(async (changes, areaName) => {
-  if (areaName !== 'local') {
-    return;
-  }
-
+onStorageChanged(async (changes) => {
   // Only inject if domains were ADDED (not just modified)
   if (changes.domains) {
     const oldDomains = changes.domains.oldValue || [];
@@ -183,9 +168,7 @@ browserAPI.storage.onChanged.addListener(async (changes, areaName) => {
 
       console.log('[MakeItPop Background] Checking permissions for open tab:', tab.url);
       // Check if we have permission
-      const hasPermission = await browserAPI.permissions.contains({
-        origins: [tab.url]
-      });
+      const hasPermission = await hasPermissions([tab.url]);
 
       if (hasPermission) {
         console.log('[MakeItPop Background] Injecting into open tab:', tab.id);
@@ -200,9 +183,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'requestPermission') {
     const { origins } = message;
 
-    browserAPI.permissions.request({
-      origins
-    }).then(granted => {
+    requestPermissions(origins).then(granted => {
       sendResponse({ granted });
 
       // If granted, inject on all matching tabs

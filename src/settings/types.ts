@@ -43,5 +43,5 @@ export interface ExportData {
   domains: ExportDomain[];
 }
 
-// Browser API type
-export const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+// Browser API - re-export from centralized module
+export { browserAPI } from '../browserApi';

@@ -1,6 +1,15 @@
 import { addOrUpdateDomainWithPermission } from './storage';
-
-const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+import {
+  browserAPI,
+  getDebugMode,
+  getEnabled,
+  setEnabled,
+  getGroups,
+  getDomains,
+  saveDomains,
+  onStorageChanged,
+} from './browserApi';
+import type { Group, Domain } from './types';
 
 // Debug logging infrastructure (shared with content.ts)
 let debugEnabled = false;
@@ -26,42 +35,21 @@ function debugLog(component: string, message: string, data?: any) {
 
 // Initialize debug mode from storage
 async function initDebugMode() {
-  const data = await browserAPI.storage.local.get('debugMode');
-  debugEnabled = data.debugMode || false;
+  debugEnabled = await getDebugMode();
   if (debugEnabled) {
     console.log('[Make It Pop - Popup] Debug logging enabled');
   }
 }
 
 // Listen for debug mode changes
-browserAPI.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === 'local' && changes.debugMode) {
-    debugEnabled = changes.debugMode.newValue || false;
+onStorageChanged((changes) => {
+  if (changes.debugMode) {
+    debugEnabled = Boolean(changes.debugMode.newValue);
     console.log(`[Make It Pop - Popup] Debug logging ${debugEnabled ? 'ENABLED ✓' : 'DISABLED ✗'}`);
   }
 });
 
 initDebugMode();
-
-interface Group {
-  id: string;
-  name: string;
-  enabled: boolean;
-  lightBgColor: string;
-  lightTextColor: string;
-  darkBgColor: string;
-  darkTextColor: string;
-  phrases: string[];
-}
-
-interface Domain {
-  id: string;
-  domain: string;
-  matchMode: 'domain-and-www' | 'all-subdomains' | 'exact';
-  mode: 'light' | 'dark';
-  groups?: string[];
-  groupMode?: 'only' | 'except';
-}
 
 let currentDomain: string = '';
 let groups: Group[] = [];
@@ -101,10 +89,9 @@ function findDomainConfig(): Domain | null {
 async function loadData() {
   currentDomain = await getCurrentTabDomain();
 
-  const data = await browserAPI.storage.local.get(['enabled', 'groups', 'domains']);
-  const enabled = data.enabled !== false; // Default to true
-  groups = data.groups || [];
-  domains = data.domains || [];
+  const enabled = await getEnabled();
+  groups = await getGroups();
+  domains = await getDomains();
 
   currentDomainConfig = findDomainConfig();
 
@@ -380,8 +367,7 @@ async function saveDomainConfig() {
   });
 
   // Read fresh data from storage to avoid overwriting concurrent changes
-  const data = await browserAPI.storage.local.get('domains');
-  const freshDomains = data.domains || [];
+  const freshDomains = await getDomains();
   debugLog('Popup', 'Read fresh domains from storage', { count: freshDomains.length });
 
   const domainIndex = freshDomains.findIndex(d => d.id === currentDomainConfig!.id);
@@ -391,7 +377,7 @@ async function saveDomainConfig() {
       index: domainIndex,
       stackTrace: new Error().stack?.split('\n').slice(1, 4).join('\n')
     });
-    await browserAPI.storage.local.set({ domains: freshDomains });
+    await saveDomains(freshDomains);
     debugLog('Popup', `✅ storage.set() complete (call #${callNumber})`);
     // Update local copy to stay in sync
     domains = freshDomains;
@@ -434,7 +420,7 @@ async function reloadCurrentTab() {
 // Event: Main extension toggle
 document.getElementById('enableToggle')!.addEventListener('change', async (e) => {
   const enabled = (e.target as HTMLInputElement).checked;
-  await browserAPI.storage.local.set({ enabled });
+  await setEnabled(enabled);
   updateHeader(enabled);
   // No need to reload - content script listens for storage changes
 });
@@ -487,11 +473,10 @@ document.getElementById('removeDomain')!.addEventListener('click', async () => {
   if (!confirmed) return;
 
   // Read fresh data to avoid overwriting concurrent changes
-  const data = await browserAPI.storage.local.get('domains');
-  const freshDomains = data.domains || [];
+  const freshDomains = await getDomains();
   const filteredDomains = freshDomains.filter(d => d.id !== currentDomainConfig!.id);
   currentDomainConfig = null;
-  await browserAPI.storage.local.set({ domains: filteredDomains });
+  await saveDomains(filteredDomains);
 
   // Update local copy and UI
   domains = filteredDomains;

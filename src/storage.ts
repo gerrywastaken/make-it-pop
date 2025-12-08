@@ -1,8 +1,16 @@
 import type { Group, Domain, StorageData } from './types';
 import JSON5 from 'json5';
+import {
+  browserAPI,
+  getGroups,
+  saveGroups,
+  getDomains,
+  saveDomains,
+  requestPermissions,
+} from './browserApi';
 
-// Browser polyfill for Firefox
-const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+// Re-export for convenience
+export { getGroups, saveGroups, getDomains, saveDomains };
 
 // Export format types (user-friendly, no IDs)
 interface ExportGroup {
@@ -23,24 +31,6 @@ interface ExportDomain {
 interface ExportData {
   groups: ExportGroup[];
   domains: ExportDomain[];
-}
-
-export async function getGroups(): Promise<Group[]> {
-  const data = await browserAPI.storage.local.get('groups');
-  return data.groups || [];
-}
-
-export async function saveGroups(groups: Group[]): Promise<void> {
-  await browserAPI.storage.local.set({ groups });
-}
-
-export async function getDomains(): Promise<Domain[]> {
-  const data = await browserAPI.storage.local.get('domains');
-  return data.domains || [];
-}
-
-export async function saveDomains(domains: Domain[]): Promise<void> {
-  await browserAPI.storage.local.set({ domains });
 }
 
 /**
@@ -79,7 +69,7 @@ export function domainToHostPatterns(domainConfig: Domain): string[] {
  * Add or update a domain with automatic permission request
  * IMPORTANT: This must be called directly from a user gesture (like a click event)
  * @param domain The domain to add or update
- * @returns Promise<boolean> - true if permission was granted, false if denied
+ * @returns Promise<boolean> - true if permission was granted and domain saved, false if denied
  * @throws Error if storage operation fails (caller should handle with .catch())
  */
 export function addOrUpdateDomainWithPermission(domain: Domain): Promise<boolean> {
@@ -88,26 +78,30 @@ export function addOrUpdateDomainWithPermission(domain: Domain): Promise<boolean
   const origins = domainToHostPatterns(domain);
   console.log('[MakeItPop] Requesting permissions for:', origins);
 
-  return browserAPI.permissions.request({ origins })
+  return requestPermissions(origins)
     .then(async granted => {
       console.log('[MakeItPop] Permission granted:', granted);
 
-      // Now save the domain (regardless of permission result)
-      // Always read fresh data from storage to avoid overwriting concurrent changes
-      const data = await browserAPI.storage.local.get('domains');
-      const domains = data.domains || [];
-
-      const existingIndex = domains.findIndex(d => d.id === domain.id);
-      if (existingIndex !== -1) {
-        // Update existing domain
-        domains[existingIndex] = domain;
-      } else {
-        // Add new domain
-        domains.push(domain);
+      // Only save domain if permission was granted
+      if (!granted) {
+        console.log('[MakeItPop] Permission denied, not saving domain');
+        return false;
       }
 
-      await saveDomains(domains);
-      return granted;
+      // Always read fresh data from storage to avoid overwriting concurrent changes
+      const currentDomains = await getDomains();
+
+      const existingIndex = currentDomains.findIndex(d => d.id === domain.id);
+      if (existingIndex !== -1) {
+        // Update existing domain
+        currentDomains[existingIndex] = domain;
+      } else {
+        // Add new domain
+        currentDomains.push(domain);
+      }
+
+      await saveDomains(currentDomains);
+      return true;
     })
     .catch(error => {
       // Only catch permission request errors, let storage errors propagate
