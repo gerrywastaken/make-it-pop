@@ -361,31 +361,36 @@ async function saveDomainFromCard(card: HTMLElement) {
   }
 
   // Use shared function to add/update domain with permission request
-  addOrUpdateDomainWithPermission(newDomain, domains).then(granted => {
-    // Update local copy
-    if (id) {
-      const index = domains.findIndex(d => d.id === id);
-      if (index !== -1) {
-        domains[index] = newDomain;
+  addOrUpdateDomainWithPermission(newDomain)
+    .then(granted => {
+      // Update local copy to match storage (don't mutate - the function already saved it)
+      if (id) {
+        const index = domains.findIndex(d => d.id === id);
+        if (index !== -1) {
+          domains[index] = newDomain;
+        }
+      } else {
+        domains.push(newDomain);
       }
-    } else {
-      domains.push(newDomain);
-    }
 
-    // Show appropriate toast
-    if (granted) {
-      showToast(id ? 'Domain updated and permissions granted!' : 'Domain added and permissions granted!');
-    } else {
-      showToast(
-        id
-          ? 'Domain updated, but permissions were denied. Click 🔓 to grant permissions.'
-          : 'Domain added, but permissions were denied. Click 🔓 to grant permissions.',
-        'warning'
-      );
-    }
+      // Show appropriate toast
+      if (granted) {
+        showToast(id ? 'Domain updated and permissions granted!' : 'Domain added and permissions granted!');
+      } else {
+        showToast(
+          id
+            ? 'Domain updated, but permissions were denied. Click 🔓 to grant permissions.'
+            : 'Domain added, but permissions were denied. Click 🔓 to grant permissions.',
+          'warning'
+        );
+      }
 
-    render();
-  });
+      render();
+    })
+    .catch(error => {
+      console.error('[MakeItPop] Failed to save domain:', error);
+      showToast('Failed to save domain. Please try again.', 'warning');
+    });
 }
 
 function cancelDomainEdit(card: HTMLElement) {
