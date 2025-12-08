@@ -455,17 +455,19 @@ document.getElementById('addDomain')!.addEventListener('click', () => {
   // IMPORTANT: Must call directly from click handler (not async/await before it)
   addOrUpdateDomainWithPermission(newDomain)
     .then(granted => {
-      // Update local state (function already saved to storage)
-      currentDomainConfig = newDomain;
-      domains.push(newDomain);
+      if (granted) {
+        console.log('[MakeItPop] Permission granted for domain:', currentDomain);
 
-      // Update UI
-      updateStats();
-      renderDomainConfig();
-      updateButtons();
+        // Update local state (function already saved to storage)
+        currentDomainConfig = newDomain;
+        domains.push(newDomain);
 
-      // Show feedback (optional - the user sees the browser permission dialog)
-      if (!granted) {
+        // Update UI
+        updateStats();
+        renderDomainConfig();
+        updateButtons();
+      } else {
+        // Show feedback (optional - the user sees the browser permission dialog)
         console.warn('[MakeItPop] Permission denied for domain:', currentDomain);
       }
       // No need to reload - content script listens for storage changes

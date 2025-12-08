@@ -113,7 +113,7 @@ export function addOrUpdateDomainWithPermission(domain: Domain): Promise<boolean
       // Only catch permission request errors, let storage errors propagate
       if (error.message && error.message.includes('permissions')) {
         console.error('[MakeItPop] Permission request failed:', error);
-        return false;
+        throw error;
       }
       // Re-throw storage errors so caller can handle them
       console.error('[MakeItPop] Storage error while adding domain:', error);
