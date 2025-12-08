@@ -101,9 +101,14 @@ jobs:
             echo ""
           fi
 
-          # Extract recent version sections from CHANGELOG.md (last 5 versions)
-          # Users may not have seen previous releases, so include more context
-          awk '/^## \[/{flag++; if(flag==6) exit} flag>=1' CHANGELOG.md > release_notes.txt
+          # Extract the latest version section from CHANGELOG.md
+          # Mozilla has a 3000 character limit, so only include latest version
+          awk '/^## \[/{flag++; if(flag==2) exit} flag==1 && !/^## \[/' CHANGELOG.md > release_notes.txt
+
+          # Add link to full changelog for users who want more history
+          echo "" >> release_notes.txt
+          echo "---" >> release_notes.txt
+          echo "Full changelog: https://github.com/gerrywastaken/make-it-pop/blob/main/CHANGELOG.md" >> release_notes.txt
 
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             echo "Extracted release notes ($(wc -l < release_notes.txt) lines):"
