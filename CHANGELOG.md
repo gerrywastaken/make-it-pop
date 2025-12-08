@@ -2,6 +2,21 @@
 
 All notable changes to Make It Pop will be documented in this file.
 
+## [1.0.5]
+
+### Added
+- Auto-request permissions when adding or updating domains (no more manual "Grant Permissions" step)... [931bef8](https://github.com/gerrywastaken/make-it-pop/commit/931bef8)
+
+### Fixed
+- Permission denial bug: extension now gracefully handles when users deny permission requests instead of getting stuck... [d3a2ea9](https://github.com/gerrywastaken/make-it-pop/commit/d3a2ea9)
+- www. prefix bug: domains with www. prefix now correctly match permission patterns... [86cd5b7](https://github.com/gerrywastaken/make-it-pop/commit/86cd5b7)
+- UI not updating after renaming a group... [7b12eb5](https://github.com/gerrywastaken/make-it-pop/commit/7b12eb5)
+- Domain references not updating when group names change (domains using "only" or "except" group filters now stay in sync)... [ddf54c3](https://github.com/gerrywastaken/make-it-pop/commit/ddf54c3)
+
+### Changed
+- Centralized browser API calls for better maintainability... [d3a2ea9](https://github.com/gerrywastaken/make-it-pop/commit/d3a2ea9)
+- Improved developer experience with web-ext for streamlined Firefox testing and fixed dev script to watch all entry points... [cccd5d2](https://github.com/gerrywastaken/make-it-pop/commit/cccd5d2), [da3e434](https://github.com/gerrywastaken/make-it-pop/commit/da3e434)
+
 ## [1.0.4]
 
 ### Fixed
@@ -93,7 +108,8 @@ All notable changes to Make It Pop will be documented in this file.
 - Extension ID format for Firefox... [#15](https://github.com/gerrywastaken/make-it-pop/pull/15)
 - Build permissions for release creation... [fd85528](https://github.com/gerrywastaken/make-it-pop/commit/fd85528)
 
-[1.0.4]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.3...HEAD
+[1.0.5]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.2-20251114-205559...v1.0.3
 [1.0.2]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.1-20251113-172722...v1.0.2-20251114-205559
 [1.0.1]: https://github.com/gerrywastaken/make-it-pop/compare/v1.0.0-20251108-135215...v1.0.1-20251113-172722
