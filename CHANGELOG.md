@@ -9,7 +9,7 @@ All notable changes to Make It Pop will be documented in this file.
 
 ### Fixed
 - Permission denial bug: extension now gracefully handles when users deny permission requests instead of getting stuck... [d3a2ea9](https://github.com/gerrywastaken/make-it-pop/commit/d3a2ea9)
-- www. prefix bug: domains with www. prefix now correctly match permission patterns... [86cd5b7](https://github.com/gerrywastaken/make-it-pop/commit/86cd5b7)
+- `www.` prefix bug: domains with `www.` prefix now correctly match permission patterns... [86cd5b7](https://github.com/gerrywastaken/make-it-pop/commit/86cd5b7)
 - UI not updating after renaming a group... [7b12eb5](https://github.com/gerrywastaken/make-it-pop/commit/7b12eb5)
 - Domain references not updating when group names change (domains using "only" or "except" group filters now stay in sync)... [ddf54c3](https://github.com/gerrywastaken/make-it-pop/commit/ddf54c3)
 
