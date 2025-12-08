@@ -370,16 +370,15 @@ export function createGroupCard(g: Group): HTMLElement {
 
 // Helper functions for the new group card design
 async function autoSaveGroup(card: HTMLElement) {
-  const id = card.getAttribute('data-id');
-  if (!id) return; // Don't save if this is a new group without an ID yet
+  let id = card.getAttribute('data-id');
+  const isNewGroup = !id;
 
-  const group = groups.find(g => g.id === id);
-  if (!group) return;
+  // Get the existing group if editing (needed for old name and fallback values)
+  const existingGroup = isNewGroup ? null : groups.find(g => g.id === id);
+  if (!isNewGroup && !existingGroup) return;
 
-  debugLog('Settings', 'autoSaveGroup() called', { groupId: id, groupName: group.name });
-
-  // Store the old name to check if it changes
-  const oldName = group.name;
+  // Store the old name to check if it changes (only relevant for existing groups)
+  const oldName = existingGroup?.name;
 
   // Get current values from the card
   const nameInput = card.querySelector('.group-name input') as HTMLInputElement;
@@ -395,6 +394,13 @@ async function autoSaveGroup(card: HTMLElement) {
     return;
   }
 
+  // Check for duplicate group names (must be unique for export to work)
+  const duplicateGroup = groups.find(g => g.name.toLowerCase() === name.toLowerCase() && g.id !== id);
+  if (duplicateGroup) {
+    showToast('A group with this name already exists', 'warning');
+    return;
+  }
+
   // Collect phrases
   const phraseTags = card.querySelectorAll('.phrases-display .phrase-item');
   const phrases = Array.from(phraseTags).map(tag => {
@@ -402,24 +408,45 @@ async function autoSaveGroup(card: HTMLElement) {
     return text.trim();
   }).filter(Boolean);
 
-  // Update group in memory
-  const index = groups.findIndex(g => g.id === id);
-  if (index !== -1) {
-    groups[index] = {
-      ...groups[index],
+  if (isNewGroup) {
+    // Create new group with generated ID
+    id = crypto.randomUUID();
+    const newGroup: Group = {
+      id,
       name,
-      enabled: toggleInput?.checked ?? group.enabled,
-      lightBgColor: lightBgHex?.value || group.lightBgColor,
-      lightTextColor: lightTextHex?.value || group.lightTextColor,
-      darkBgColor: darkBgHex?.value || group.darkBgColor,
-      darkTextColor: darkTextHex?.value || group.darkTextColor,
+      enabled: toggleInput?.checked ?? true,
+      lightBgColor: lightBgHex?.value || '#ffff00',
+      lightTextColor: lightTextHex?.value || '#000000',
+      darkBgColor: darkBgHex?.value || '#3a3a00',
+      darkTextColor: darkTextHex?.value || '#ffffff',
       phrases,
     };
+    groups.push(newGroup);
+    card.setAttribute('data-id', id);
+    toggleInput?.setAttribute('data-id', id);
+
+    debugLog('Settings', 'Created new group', { groupId: id, groupName: name });
+  } else {
+    // Update existing group
+    debugLog('Settings', 'autoSaveGroup() called', { groupId: id, groupName: existingGroup!.name });
+
+    const index = groups.findIndex(g => g.id === id);
+    if (index !== -1) {
+      groups[index] = {
+        ...groups[index],
+        name,
+        enabled: toggleInput?.checked ?? existingGroup!.enabled,
+        lightBgColor: lightBgHex?.value || existingGroup!.lightBgColor,
+        lightTextColor: lightTextHex?.value || existingGroup!.lightTextColor,
+        darkBgColor: darkBgHex?.value || existingGroup!.darkBgColor,
+        darkTextColor: darkTextHex?.value || existingGroup!.darkTextColor,
+        phrases,
+      };
+    }
   }
 
   debugLog('Settings', 'Saving groups to storage', {
     groupId: id,
-    enabled: groups[index].enabled,
     phrasesCount: phrases.length,
     totalGroups: groups.length
   });
