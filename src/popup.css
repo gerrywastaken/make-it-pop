@@ -27,6 +27,8 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-color);
+  border: 2px solid var(--border-color);
+  box-sizing: border-box;
 }
 
 /* Header */
