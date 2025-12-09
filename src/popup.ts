@@ -56,6 +56,38 @@ let groups: Group[] = [];
 let domains: Domain[] = [];
 let currentDomainConfig: Domain | null = null;
 
+// Custom confirmation dialog (replaces native confirm() which doesn't fit in popups)
+function showConfirm(message: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('confirmModal')!;
+    const messageEl = document.getElementById('confirmMessage')!;
+    const okBtn = document.getElementById('confirmOk')!;
+    const cancelBtn = document.getElementById('confirmCancel')!;
+
+    messageEl.textContent = message;
+    modal.classList.add('visible');
+
+    function cleanup() {
+      modal.classList.remove('visible');
+      okBtn.removeEventListener('click', handleOk);
+      cancelBtn.removeEventListener('click', handleCancel);
+    }
+
+    function handleOk() {
+      cleanup();
+      resolve(true);
+    }
+
+    function handleCancel() {
+      cleanup();
+      resolve(false);
+    }
+
+    okBtn.addEventListener('click', handleOk);
+    cancelBtn.addEventListener('click', handleCancel);
+  });
+}
+
 // Get current tab's domain
 async function getCurrentTabDomain(): Promise<string> {
   const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
@@ -469,7 +501,7 @@ document.getElementById('addDomain')!.addEventListener('click', () => {
 document.getElementById('removeDomain')!.addEventListener('click', async () => {
   if (!currentDomainConfig) return;
 
-  const confirmed = confirm(`Remove ${currentDomain} from configured domains?`);
+  const confirmed = await showConfirm(`Remove ${currentDomain} from configured domains?`);
   if (!confirmed) return;
 
   // Read fresh data to avoid overwriting concurrent changes
