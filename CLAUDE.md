@@ -287,7 +287,14 @@ When creating a pull request:
    git push --force-with-lease
    ```
 
-3. **Create or provide PR creation information:**
+3. **Consider changelog entry for user-facing changes:**
+   - Before creating/pushing a PR, consider if changes are significant enough for users to know about
+   - Add changelog entries for: bug fixes users would notice, new features, UI changes, behavior changes
+   - Skip changelog for: internal refactors, code cleanup, dev tooling, documentation-only changes
+   - Add to the `[Unreleased]` or next version section (e.g., `## [1.0.6] - Unreleased`) in CHANGELOG.md
+   - Don't spam the changelog - use judgment about what users would actually care about
+
+4. **Create or provide PR creation information:**
    - **When the user explicitly asks you to create a PR** (e.g., "create a pr", "make a pull request"): Run the `gh pr create` command directly using the Bash tool with a HEREDOC for proper formatting
    - **Otherwise**: Provide a concise PR description following this format:
 
@@ -311,7 +318,7 @@ EOF
    or [create pr](https://github.com/gerrywastaken/REPO/pull/new/BRANCH_NAME)
    </example>
 
-4. **Before merge, rebase with autosquash to clean up fixup commits:**
+5. **Before merge, rebase with autosquash to clean up fixup commits:**
    ```bash
    git fetch origin main && git rebase -i --autosquash origin/main
    git push --force-with-lease
