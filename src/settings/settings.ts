@@ -14,8 +14,9 @@ import { createElement, showToast } from './utils/dom';
 import { getGroups, saveGroups, getDomains, saveDomains } from './utils/storage';
 import { exportData, importData } from './utils/importExport';
 import { domainToHostPatterns } from './utils/permissions';
-import { createGroupCard, initGroupCard, updateGroupsState } from './components/groupCard';
+import { createGroupCard, initGroupCard, updateGroupsState, setCurrentTheme, updatePreviewDefaults } from './components/groupCard';
 import { createDomainCard, initDomainCard, updateDomainsState, updateGroupsReference } from './components/domainCard';
+import { initTheme, getTheme, setTheme, getEffectiveThemeValue } from '../theme';
 
 let groups: Group[] = [];
 let domains: Domain[] = [];
@@ -618,5 +619,49 @@ async function initDebugCheckbox() {
   }
 }
 
-init();
-initDebugCheckbox();
+// Initialize theme system
+async function initThemeUI() {
+  // Initialize theme engine
+  await initTheme();
+
+  // Listen for system theme changes (matters when in auto mode)
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async () => {
+    const theme = await getTheme();
+    if (theme === 'auto') {
+      const effectiveTheme = await getEffectiveThemeValue();
+      updatePreviewDefaults(effectiveTheme);
+    }
+  });
+
+  // Load current theme preference
+  const currentTheme = await getTheme();
+
+  // Update radio buttons to reflect current theme and add event listeners
+  const themeRadios = document.querySelectorAll<HTMLInputElement>('input[name="theme"]');
+  themeRadios.forEach((radio) => {
+    radio.checked = radio.value === currentTheme;
+
+    radio.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      const theme = target.value;
+      if (target.checked && (theme === 'light' || theme === 'auto' || theme === 'dark')) {
+        await setTheme(theme);
+        // Update group card preview defaults to match the new theme
+        const effectiveTheme = await getEffectiveThemeValue();
+        updatePreviewDefaults(effectiveTheme);
+        showToast(`Theme changed to ${theme}`);
+      }
+    });
+  });
+}
+
+// Initialize everything - theme must be set before rendering groups
+(async () => {
+  await initTheme();
+  // Set the effective theme for group card previews BEFORE rendering
+  const effectiveTheme = await getEffectiveThemeValue();
+  setCurrentTheme(effectiveTheme);
+  await init();
+  initDebugCheckbox();
+  initThemeUI();
+})();

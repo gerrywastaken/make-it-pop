@@ -41,21 +41,21 @@ export function createDomainCard(d: Domain): HTMLElement {
     textContent: d.domain
   });
 
-  // Action buttons
+  // Action buttons (clean text icons, no emojis)
   const actions = createElement('div', { className: 'card-actions' });
   actions.appendChild(createElement('button', {
-    textContent: '🔓',
-    className: 'icon-only request-permission',
-    attributes: { 'data-id': d.id, title: 'Request Permission' }
+    textContent: 'Grant',
+    className: 'btn btn-secondary btn-small request-permission',
+    attributes: { 'data-id': d.id, title: 'Grant Permission' }
   }));
   actions.appendChild(createElement('button', {
-    textContent: '✏️',
-    className: 'icon-only edit-domain',
+    textContent: 'Edit',
+    className: 'btn btn-secondary btn-small edit-domain',
     attributes: { 'data-id': d.id, title: 'Edit' }
   }));
   actions.appendChild(createElement('button', {
-    textContent: '🗑️',
-    className: 'icon-only danger delete-domain',
+    textContent: '×',
+    className: 'btn-icon delete-domain',
     attributes: { 'data-id': d.id, title: 'Delete' }
   }));
 
