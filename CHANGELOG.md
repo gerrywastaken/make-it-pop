@@ -4,9 +4,13 @@ All notable changes to Make It Pop will be documented in this file.
 
 ## [1.0.6] - Unreleased
 
+### Added
+- Firefox for Android (mobile) support - extension now available on Firefox mobile browsers
+
 ### Fixed
 - Popup confirmation dialog now fits properly within the popup instead of using janky native browser alerts... [#65](https://github.com/gerrywastaken/make-it-pop/pull/65)
 - Popup now has visible borders so it doesn't blend into the underlying page... [#65](https://github.com/gerrywastaken/make-it-pop/pull/65)
+- Popup UI on mobile devices now uses full width with proper touch targets instead of being too small
 
 ## [1.0.5]
 

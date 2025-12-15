@@ -21,7 +21,9 @@
 }
 
 body {
-  width: 320px;
+  min-width: 320px;
+  max-width: 600px;
+  width: 100%;
   padding: 0;
   margin: 0;
   font-family: system-ui, -apple-system, sans-serif;
@@ -29,6 +31,53 @@ body {
   color: var(--text-color);
   border: 2px solid var(--border-color);
   box-sizing: border-box;
+}
+
+/* Desktop popup - keep it compact */
+@media (min-width: 601px) {
+  body {
+    width: 360px;
+  }
+}
+
+/* Mobile - full width with proper touch targets */
+@media (max-width: 600px) {
+  body {
+    width: 100vw;
+    min-height: 100vh;
+    border: none;
+  }
+
+  button {
+    padding: 14px;
+    font-size: 16px;
+  }
+
+  .header {
+    padding: 20px;
+  }
+
+  .section {
+    padding: 16px 20px;
+  }
+
+  .quick-actions {
+    padding: 20px;
+  }
+
+  .toggle-switch {
+    width: 52px;
+    height: 28px;
+  }
+
+  .toggle-slider:before {
+    height: 22px;
+    width: 22px;
+  }
+
+  input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+  }
 }
 
 /* Header */
