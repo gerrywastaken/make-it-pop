@@ -1289,3 +1289,321 @@ input:checked + .toggle-slider {
   border-color: #ff6b6b;
   color: #ff8080;
 }
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+@media (max-width: 768px) {
+  /* Remove max-width constraints for full mobile width */
+  .header,
+  .tab-nav,
+  .content {
+    max-width: 100%;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  /* Ensure body uses full viewport */
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  .header {
+    padding: 20px 16px;
+  }
+
+  .header h1 {
+    font-size: 24px;
+  }
+
+  /* Touch-friendly tab navigation */
+  .tab-nav {
+    padding: 0 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+    /* Add safe area support for notched devices */
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  .tab-nav::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
+  .tab-button {
+    padding: 14px 20px;
+    font-size: 15px;
+    white-space: nowrap;
+    min-height: 44px; /* Minimum touch target */
+  }
+
+  /* Content area */
+  .content {
+    padding: 20px 16px;
+  }
+
+  /* Touch-friendly buttons - minimum 44x44px (Apple HIG) */
+  button {
+    min-height: 44px;
+    font-size: 16px;
+    padding: 12px 20px;
+  }
+
+  /* Larger toggle switches for easier tapping */
+  .toggle-switch {
+    width: 52px;
+    height: 28px;
+  }
+
+  .toggle-slider:before {
+    height: 22px;
+    width: 22px;
+  }
+
+  input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+  }
+
+  /* Prevent iOS zoom on input focus (16px minimum) */
+  input[type="text"],
+  input[type="color"],
+  textarea {
+    font-size: 16px;
+  }
+
+  textarea {
+    min-height: 120px;
+  }
+
+  /* Cards - more compact on mobile */
+  .card {
+    padding: 16px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .card-title {
+    font-size: 17px;
+  }
+
+  /* Stack color pickers vertically on mobile */
+  .color-picker-group {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .color-picker-item {
+    width: 100%;
+  }
+
+  /* Larger color picker buttons */
+  input[type="color"] {
+    width: 60px;
+    height: 50px;
+    border-radius: 8px;
+  }
+
+  .color-inputs {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .color-input-wrapper {
+    gap: 8px;
+  }
+
+  .color-hex {
+    font-size: 14px;
+    padding: 12px;
+    min-width: 90px;
+  }
+
+  /* Button groups - stack vertically or allow wrapping */
+  .button-group {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .card-footer {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .card-footer-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .card-footer-actions button {
+    width: 100%;
+  }
+
+  /* Phrase tags - better touch targets */
+  .phrase-tags {
+    gap: 8px;
+  }
+
+  .phrase-tag {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+
+  .phrase-tag button {
+    min-width: 24px;
+    min-height: 24px;
+    padding: 4px;
+  }
+
+  /* Phrase display */
+  .phrases-display {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .phrase-item {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  /* Phrase input area */
+  .phrase-input-area {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .phrase-input-area input {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .phrase-input-area .btn,
+  .phrase-input-area button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  /* Group selection */
+  .group-selection {
+    padding: 12px;
+  }
+
+  .checkbox-list {
+    margin-left: 20px;
+  }
+
+  .checkbox-list label,
+  .radio-group label {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 10px 8px;
+  }
+
+  /* Settings sections */
+  .settings-section {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .settings-section h3 {
+    font-size: 17px;
+  }
+
+  .settings-section p {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* Toast notifications - full width on mobile */
+  .toast {
+    bottom: 20px;
+    right: 16px;
+    left: 16px;
+    max-width: calc(100% - 32px);
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 20px 16px;
+  }
+
+  .empty-state h2 {
+    font-size: 20px;
+  }
+
+  .empty-state h3 {
+    font-size: 17px;
+  }
+
+  .empty-state-intro {
+    font-size: 15px;
+  }
+
+  /* Mode preview */
+  .highlight-preview {
+    padding: 12px;
+    font-size: 15px;
+  }
+
+  /* Icon buttons */
+  .btn-icon,
+  button.icon-only {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 10px;
+    font-size: 20px;
+  }
+
+  /* Add button */
+  .add-button {
+    position: sticky;
+    top: 60px; /* Below sticky tab nav */
+    z-index: 10;
+    margin-bottom: 16px;
+    width: 100%;
+    float: none;
+  }
+
+  /* Domain info */
+  .domain-info {
+    font-size: 15px;
+  }
+
+  /* Mode toggle bar */
+  .mode-toggle-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .mode-toggle {
+    width: 100%;
+  }
+
+  .mode-toggle-btn {
+    flex: 1;
+    padding: 10px 14px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  /* Group name input */
+  .group-name input {
+    font-size: 18px;
+  }
+
+  /* Improve spacing for lists */
+  #groupsList,
+  #domainsList {
+    margin-top: 16px;
+  }
+}
