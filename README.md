@@ -1,4 +1,5 @@
-# Make It Pop 🎨
+
+<img width="1280" height="640" alt="make_it_pop_cover" src="https://github.com/user-attachments/assets/448ac648-1e59-42e3-827b-b47b7e76e61d" />
 
 A browser extension that highlights important phrases on web pages using customizable colors.
 
