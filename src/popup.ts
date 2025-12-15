@@ -10,6 +10,7 @@ import {
   onStorageChanged,
 } from './browserApi';
 import type { Group, Domain } from './types';
+import { initTheme } from './theme';
 
 // Debug logging infrastructure (shared with content.ts)
 let debugEnabled = false;
@@ -526,3 +527,4 @@ document.getElementById('openSettings')!.addEventListener('click', () => {
 
 // Initialize
 loadData();
+initTheme();

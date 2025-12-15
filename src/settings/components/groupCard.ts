@@ -51,11 +51,42 @@ initDebugMode();
 let groups: Group[] = [];
 let render: () => void = () => {};
 let reloadDomains: () => Promise<void> = async () => {};
+let currentEffectiveTheme: 'light' | 'dark' = 'light'; // Default to light
 
 export function initGroupCard(initialGroups: Group[], renderFn: () => void, reloadDomainsFn: () => Promise<void>) {
   groups = initialGroups;
   render = renderFn;
   reloadDomains = reloadDomainsFn;
+}
+
+// Set the current effective theme (called from settings.ts after theme is resolved)
+export function setCurrentTheme(theme: 'light' | 'dark') {
+  currentEffectiveTheme = theme;
+}
+
+// Update all existing group card preview defaults to match the new theme
+export function updatePreviewDefaults(theme: 'light' | 'dark') {
+  currentEffectiveTheme = theme;
+
+  // Find all group cards and update their preview toggle to match the new theme
+  const cards = document.querySelectorAll('#groupsList .card');
+  cards.forEach(card => {
+    const lightBtn = card.querySelector('.mode-toggle-btn:first-child') as HTMLElement;
+    const darkBtn = card.querySelector('.mode-toggle-btn:last-child') as HTMLElement;
+    if (lightBtn && darkBtn) {
+      // Update button states
+      lightBtn.classList.toggle('active', theme === 'light');
+      darkBtn.classList.toggle('active', theme === 'dark');
+
+      // Switch preview visibility
+      const previews = card.querySelectorAll('.mode-preview');
+      previews.forEach(p => {
+        const preview = p as HTMLElement;
+        const previewMode = preview.getAttribute('data-mode');
+        preview.classList.toggle('active', previewMode === theme);
+      });
+    }
+  });
 }
 
 export function updateGroupsState(newGroups: Group[]) {
@@ -124,14 +155,17 @@ export function createGroupCard(g: Group): HTMLElement {
     textContent: 'Highlight Preview'
   }));
 
+  // Use the module-level theme state (set by settings.ts before rendering)
+  const defaultToLight = currentEffectiveTheme === 'light';
+
   const modeToggle = createElement('div', { className: 'mode-toggle' });
   const lightBtn = createElement('button', {
-    textContent: '☀️ Light',
-    className: 'mode-toggle-btn'
+    textContent: 'Light',
+    className: `mode-toggle-btn${defaultToLight ? ' active' : ''}`
   });
   const darkBtn = createElement('button', {
-    textContent: '🌙 Dark',
-    className: 'mode-toggle-btn active'
+    textContent: 'Dark',
+    className: `mode-toggle-btn${defaultToLight ? '' : ' active'}`
   });
 
   lightBtn.addEventListener('click', () => switchPreviewMode(card, 'light', lightBtn, darkBtn));
@@ -144,7 +178,7 @@ export function createGroupCard(g: Group): HTMLElement {
 
   // Light mode preview
   const lightModePreview = createElement('div', {
-    className: 'mode-preview light-mode',
+    className: `mode-preview light-mode${defaultToLight ? ' active' : ''}`,
     attributes: { 'data-mode': 'light' }
   });
 
@@ -206,7 +240,7 @@ export function createGroupCard(g: Group): HTMLElement {
 
   // Dark mode preview
   const darkModePreview = createElement('div', {
-    className: 'mode-preview dark-mode active',
+    className: `mode-preview dark-mode${defaultToLight ? '' : ' active'}`,
     attributes: { 'data-mode': 'dark' }
   });
 

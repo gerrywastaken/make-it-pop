@@ -21,4 +21,5 @@ export interface Domain {
 export interface StorageData {
   groups: Group[];
   domains: Domain[];
+  theme?: 'light' | 'auto' | 'dark';  // UI theme preference (default: 'auto')
 }

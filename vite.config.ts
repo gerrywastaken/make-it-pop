@@ -39,8 +39,13 @@ export default defineConfig(({ command }) => ({
             copyFileSync('public/manifest.json', 'dist/manifest.json');
           }
 
-          copyFileSync('src/settings/settings.html', 'dist/settings.html');
-          copyFileSync('src/settings/settings.css', 'dist/settings.css');
+          // Preserve settings directory structure for correct relative paths
+          try { mkdirSync('dist/settings', { recursive: true }); } catch {}
+          copyFileSync('src/settings/settings.html', 'dist/settings/settings.html');
+          copyFileSync('src/settings/settings.css', 'dist/settings/settings.css');
+          // Copy settings.js to settings folder (built to dist root, needed in subfolder)
+          copyFileSync('dist/settings.js', 'dist/settings/settings.js');
+          copyFileSync('src/shared.css', 'dist/shared.css');
           copyFileSync('src/popup.html', 'dist/popup.html');
           copyFileSync('src/popup.css', 'dist/popup.css');
         }

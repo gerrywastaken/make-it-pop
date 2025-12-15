@@ -5,10 +5,12 @@ interface MockStorage {
   enabled?: boolean;
   groups: any[];
   domains: any[];
+  theme?: 'light' | 'auto' | 'dark';
 }
 
 const mockStorage: MockStorage = {
   enabled: true,
+  theme: 'auto',
   groups: [
     {
       id: 'mock-group-1',
