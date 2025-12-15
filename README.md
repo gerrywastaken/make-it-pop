@@ -1,5 +1,5 @@
 
-<img width="1280" height="640" alt="make_it_pop_cover" src="https://github.com/user-attachments/assets/448ac648-1e59-42e3-827b-b47b7e76e61d" />
+<img width="1280" height="640" alt="make_it_pop_cover_transparent" src="https://github.com/user-attachments/assets/90bdef7b-038f-4780-a991-6424a94dcdcc" />
 
 A browser extension that highlights important phrases on web pages using customizable colors.
 
