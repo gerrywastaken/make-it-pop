@@ -620,10 +620,8 @@ async function initDebugCheckbox() {
 }
 
 // Initialize theme system
+// Note: initTheme() must be called before this function (done in main IIFE)
 async function initThemeUI() {
-  // Initialize theme engine
-  await initTheme();
-
   // Listen for system theme changes (matters when in auto mode)
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async () => {
     const theme = await getTheme();
