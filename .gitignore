@@ -8,3 +8,6 @@ src/version.ts
 
 .gemini/
 gha-creds-*.json
+
+# irrelevant files
+tmp/

@@ -59,6 +59,17 @@
   --palette-preview-light-text: #1a1a1a;
   --palette-preview-dark: #2a2a2a;
   --palette-preview-dark-text: #e5e5e5;
+
+  /* Z-index scale */
+  --z-sticky: 10;
+  --z-dropdown: 50;
+  --z-modal: 100;
+  --z-toast: 200;
+
+  /* Transitions */
+  --transition-fast: 0.15s;
+  --transition-normal: 0.2s;
+  --transition-slow: 0.3s;
 }
 
 /* ----------------------------------------
@@ -112,11 +123,23 @@
   --success-text: var(--palette-success-light-text);
   --warning-bg: var(--palette-warning-light-bg);
   --warning-text: var(--palette-warning-light-text);
+
+  /* Toggle */
+  --toggle-bg: var(--palette-gray-300);
+  --toggle-bg-checked: var(--palette-green-600);
+  --toggle-knob: var(--palette-white);
 }
 
 /* ----------------------------------------
    SEMANTIC TOKENS - DARK MODE
-   Media query fallback for initial render
+
+   NOTE: Dark mode values appear twice (media query + data-theme).
+   This is intentional - CSS has no way to share declarations between
+   a media query and attribute selector. Both are needed:
+   - @media: Prevents flash of light theme before JS runs
+   - [data-theme]: Allows user override of system preference
+
+   When updating dark mode values, update BOTH sections.
    ---------------------------------------- */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -167,6 +190,11 @@
     --success-text: var(--palette-green-500);
     --warning-bg: var(--palette-warning-dark-bg);
     --warning-text: var(--palette-warning-dark-text);
+
+    /* Toggle */
+    --toggle-bg: var(--palette-dark-50);
+    --toggle-bg-checked: var(--palette-green-500);
+    --toggle-knob: var(--palette-white);
   }
 }
 
@@ -219,6 +247,11 @@
   --success-text: var(--palette-green-500);
   --warning-bg: var(--palette-warning-dark-bg);
   --warning-text: var(--palette-warning-dark-text);
+
+  /* Toggle */
+  --toggle-bg: var(--palette-dark-50);
+  --toggle-bg-checked: var(--palette-green-500);
+  --toggle-knob: var(--palette-white);
 }
 
 /* ----------------------------------------
@@ -480,8 +513,8 @@ button.icon-only:hover {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #ccc;
-  transition: 0.3s;
+  background-color: var(--toggle-bg);
+  transition: var(--transition-slow);
   border-radius: 24px;
 }
 
@@ -492,13 +525,13 @@ button.icon-only:hover {
   width: 18px;
   left: 3px;
   bottom: 3px;
-  background-color: white;
-  transition: 0.3s;
+  background-color: var(--toggle-knob);
+  transition: var(--transition-slow);
   border-radius: 50%;
 }
 
 input:checked + .toggle-slider {
-  background-color: var(--palette-green-600);
+  background-color: var(--toggle-bg-checked);
 }
 
 input:checked + .toggle-slider:before {
@@ -585,8 +618,8 @@ input:checked + .toggle-slider:before {
   padding: 15px 20px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  z-index: 1000;
-  animation: slideIn 0.3s;
+  z-index: var(--z-toast);
+  animation: slideIn var(--transition-slow);
   display: none;
 }
 
@@ -782,5 +815,19 @@ input:checked + .toggle-slider:before {
     min-height: 44px;
     padding: 10px;
     font-size: 20px;
+  }
+}
+
+/* ----------------------------------------
+   REDUCED MOTION
+   Respect user preference for reduced motion
+   ---------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
