@@ -49,7 +49,7 @@
   font-size: 16px;
   color: var(--text-color);
   border-bottom: 3px solid transparent;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
   position: relative;
   top: 2px;
 }
@@ -271,7 +271,7 @@
   font-weight: 500;
   color: var(--text-color);
   text-align: center;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
   user-select: none;
 }
 
@@ -451,7 +451,7 @@
   font-weight: 500;
   border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -495,7 +495,7 @@
   margin-bottom: 16px;
   border: 2px solid rgba(255, 255, 255, 0.1);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
   color: var(--palette-preview-light-text);
 }
 
@@ -518,7 +518,7 @@
 .highlight-sample {
   padding: 2px 4px;
   border-radius: 3px;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
 
 /* Color Inputs (in preview section) */
@@ -624,7 +624,7 @@ input[type="text"].color-hex {
   border-radius: 4px;
   font-size: 13px;
   color: var(--text-color);
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
   border: 1px solid var(--border-color);
 }
 
@@ -645,7 +645,7 @@ input[type="text"].color-hex {
   font-size: 14px;
   padding: 0;
   line-height: 1;
-  transition: color 0.2s;
+  transition: color var(--transition-normal);
 }
 
 .phrase-item:hover .phrase-delete {
@@ -705,7 +705,7 @@ input[type="text"].color-hex {
   width: 100%;
   padding: 4px 0;
   border-bottom: 2px solid transparent;
-  transition: border-color 0.2s;
+  transition: border-color var(--transition-normal);
 }
 
 .group-name input:focus {

@@ -305,7 +305,7 @@ textarea {
   padding: 8px 12px;
   font-size: 14px;
   font-family: inherit;
-  transition: border-color 0.2s;
+  transition: border-color var(--transition-normal);
 }
 
 input[type="text"]:focus,
@@ -368,7 +368,7 @@ button {
   font-size: 14px;
   cursor: pointer;
   font-family: inherit;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
 
 button.primary {
@@ -423,7 +423,7 @@ button.icon-only:hover {
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
 }
 
 .btn.btn-primary {
@@ -474,7 +474,7 @@ button.icon-only:hover {
   cursor: pointer;
   font-size: 18px;
   color: var(--muted-color);
-  transition: all 0.2s;
+  transition: all var(--transition-normal);
   border-radius: 6px;
 }
 
@@ -561,7 +561,7 @@ input:checked + .toggle-slider:before {
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
-  transition: all 0.3s;
+  transition: all var(--transition-slow);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
