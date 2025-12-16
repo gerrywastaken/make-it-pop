@@ -38,7 +38,7 @@
   position: sticky;
   top: 0;
   background: var(--bg-color);
-  z-index: 99;
+  z-index: var(--z-dropdown);
 }
 
 .tab-button {
@@ -116,8 +116,8 @@
 }
 
 .phrase-tag {
-  background: #e0e0e0;
-  color: #333;
+  background: var(--button-secondary-bg);
+  color: var(--text-color);
   padding: 6px 12px;
   border-radius: 16px;
   font-size: 13px;
@@ -129,7 +129,7 @@
 .phrase-tag button {
   background: none;
   border: none;
-  color: #666;
+  color: var(--muted-color);
   cursor: pointer;
   padding: 0;
   width: 16px;
@@ -143,8 +143,8 @@
 }
 
 .phrase-tag button:hover {
-  background: rgba(0,0,0,0.1);
-  color: #000;
+  background: var(--border-color);
+  color: var(--text-color);
 }
 
 .phrase-count {
@@ -772,7 +772,6 @@ input[type="text"].color-hex {
   .tab-nav {
     padding: 0 12px;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
     padding-left: max(12px, env(safe-area-inset-left));
@@ -953,7 +952,7 @@ input[type="text"].color-hex {
   .add-button {
     position: sticky;
     top: 60px;
-    z-index: 10;
+    z-index: var(--z-sticky);
     margin-bottom: 16px;
     width: 100%;
     float: none;
