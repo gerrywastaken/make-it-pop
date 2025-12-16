@@ -41,13 +41,15 @@ export default defineConfig(({ command }) => ({
 
           // Preserve settings directory structure for correct relative paths
           try { mkdirSync('dist/settings', { recursive: true }); } catch {}
+          try { mkdirSync('dist/styles', { recursive: true }); } catch {}
           copyFileSync('src/settings/settings.html', 'dist/settings/settings.html');
-          copyFileSync('src/settings/settings.css', 'dist/settings/settings.css');
           // Copy settings.js to settings folder (built to dist root, needed in subfolder)
           copyFileSync('dist/settings.js', 'dist/settings/settings.js');
-          copyFileSync('src/shared.css', 'dist/shared.css');
+          // Copy styles
+          copyFileSync('src/styles/shared.css', 'dist/styles/shared.css');
+          copyFileSync('src/styles/settings.css', 'dist/styles/settings.css');
+          copyFileSync('src/styles/popup.css', 'dist/styles/popup.css');
           copyFileSync('src/popup.html', 'dist/popup.html');
-          copyFileSync('src/popup.css', 'dist/popup.css');
         }
       }
     }
