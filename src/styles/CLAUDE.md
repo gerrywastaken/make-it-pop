@@ -40,12 +40,8 @@
 
 **Animations:** Define keyframes, reference via class, respect reduced-motion.
 
-## Known Issues to Fix
+## Available Tokens
 
-These exist in the codebase - fix when touching nearby code:
+**Z-index scale:** `--z-sticky` (10), `--z-dropdown` (50), `--z-modal` (100), `--z-toast` (200)
 
-1. **Hardcoded colors** in `.phrase-tag`, `.toggle-slider` - should use tokens
-2. **Duplicate dark mode definitions** - `@media` and `[data-theme]` blocks are copy-pasted
-3. **Missing z-index scale** - add `--z-sticky`, `--z-modal`, etc.
-4. **Inconsistent transitions** - standardize on `--transition-fast: 0.15s`, `--transition-normal: 0.2s`
-5. **No `prefers-reduced-motion`** - animations ignore user preference
+**Transitions:** `--transition-fast` (0.15s), `--transition-normal` (0.2s), `--transition-slow` (0.3s)
