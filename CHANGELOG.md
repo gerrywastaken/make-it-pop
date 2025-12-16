@@ -6,6 +6,8 @@ All notable changes to Make It Pop will be documented in this file.
 
 ### Added
 - Firefox for Android (mobile) support - extension now available on Firefox mobile browsers
+- Light/Auto/Dark theme selector for settings and popup UIs so users can force a theme or follow their system preference
+- Accessibility improvements for UI animations by honoring `prefers-reduced-motion` and tightening visual polish through the new design token system
 
 ### Fixed
 - Popup confirmation dialog now fits properly within the popup instead of using janky native browser alerts... [#65](https://github.com/gerrywastaken/make-it-pop/pull/65)
