@@ -403,16 +403,8 @@ export function createGroupCard(g: Group): HTMLElement {
 
 // Helper functions for the new group card design
 async function autoSaveGroup(card: HTMLElement) {
-  const id = card.getAttribute('data-id');
-  if (!id) return; // Don't save if this is a new group without an ID yet
-
-  const group = groups.find(g => g.id === id);
-  if (!group) return;
-
-  debugLog('Settings', 'autoSaveGroup() called', { groupId: id, groupName: group.name });
-
-  // Store the old name to check if it changes
-  const oldName = group.name;
+  let id = card.getAttribute('data-id');
+  const isNewGroup = !id;
 
   // Get current values from the card
   const nameInput = card.querySelector('.group-name input') as HTMLInputElement;
@@ -427,6 +419,51 @@ async function autoSaveGroup(card: HTMLElement) {
     showToast('Group name is required', 'warning');
     return;
   }
+
+  // For new groups, generate a UUID and add to the array
+  if (isNewGroup) {
+    id = crypto.randomUUID();
+    card.setAttribute('data-id', id);
+
+    // Collect phrases
+    const phraseTags = card.querySelectorAll('.phrases-display .phrase-item');
+    const phrases = Array.from(phraseTags).map(tag => {
+      const text = tag.querySelector('.phrase-text')?.textContent || '';
+      return text.trim();
+    }).filter(Boolean);
+
+    const newGroup: Group = {
+      id,
+      name,
+      enabled: toggleInput?.checked ?? true,
+      lightBgColor: lightBgHex?.value || '#ffff00',
+      lightTextColor: lightTextHex?.value || '#000000',
+      darkBgColor: darkBgHex?.value || '#3a3a00',
+      darkTextColor: darkTextHex?.value || '#ffffff',
+      phrases,
+    };
+
+    groups.push(newGroup);
+
+    debugLog('Settings', 'Created new group', { groupId: id, groupName: name });
+
+    // Save to storage
+    await saveGroups(groups);
+
+    // Render to update domain menus with the new group
+    render();
+
+    debugLog('Settings', 'autoSaveGroup() complete - new group saved');
+    return;
+  }
+
+  const group = groups.find(g => g.id === id);
+  if (!group) return;
+
+  debugLog('Settings', 'autoSaveGroup() called', { groupId: id, groupName: group.name });
+
+  // Store the old name to check if it changes
+  const oldName = group.name;
 
   // Collect phrases
   const phraseTags = card.querySelectorAll('.phrases-display .phrase-item');
